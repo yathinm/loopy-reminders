@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppFrame } from '@/components/AppFrame';
 import { migrateDatabase } from '@/data/database';
@@ -29,6 +29,7 @@ export default function RootLayout() {
 function AppNavigator() {
   const scheme = useColorScheme(); const colors = colorsFor(scheme); const { loading } = useReminders();
   if (loading) return <View style={[styles.loading, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.accent} /></View>;
-  return <><StatusBar style={scheme === 'dark' ? 'light' : 'dark'} /><Stack screenOptions={{ headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.background }, headerShadowVisible: false, contentStyle: { backgroundColor: colors.background }, headerBackButtonDisplayMode: 'minimal' }}><Stack.Screen name="index" options={{ title: 'Loopy Reminders' }} /><Stack.Screen name="list/[id]" options={{ title: 'Reminders' }} /><Stack.Screen name="recently-deleted" options={{ title: 'Recently Deleted' }} /><Stack.Screen name="reminder/new" options={{ title: 'New Reminder', presentation: 'modal' }} /><Stack.Screen name="reminder/[id]" options={{ title: 'Edit Reminder', presentation: 'modal' }} /><Stack.Screen name="search" options={{ title: 'Search' }} /><Stack.Screen name="settings" options={{ title: 'Settings', headerLargeTitle: true }} /><Stack.Screen name="list-editor" options={{ title: 'List', presentation: 'modal' }} /></Stack></>;
+  const webHeader = Platform.OS === 'web' ? { height: 104, paddingTop: 48 } : {};
+  return <><StatusBar style={scheme === 'dark' ? 'light' : 'dark'} /><Stack screenOptions={{ headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.background, ...webHeader }, headerShadowVisible: false, contentStyle: { backgroundColor: colors.background }, headerBackButtonDisplayMode: 'minimal' }}><Stack.Screen name="index" options={{ title: 'Loopy Reminders' }} /><Stack.Screen name="list/[id]" options={{ title: 'Reminders' }} /><Stack.Screen name="recently-deleted" options={{ title: 'Recently Deleted' }} /><Stack.Screen name="reminder/new" options={{ title: 'New Reminder', presentation: 'modal' }} /><Stack.Screen name="reminder/[id]" options={{ title: 'Edit Reminder', presentation: 'modal' }} /><Stack.Screen name="search" options={{ title: 'Search' }} /><Stack.Screen name="settings" options={{ title: 'Settings', headerLargeTitle: true }} /><Stack.Screen name="list-editor" options={{ title: 'List', presentation: 'modal' }} /></Stack></>;
 }
 const styles = StyleSheet.create({ loading: { flex: 1, alignItems: 'center', justifyContent: 'center' } });
