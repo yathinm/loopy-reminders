@@ -1,6 +1,8 @@
 {
   "name": "loopy-reminders",
   "version": "1.0.0",
+  "description": "A private, playful reminder app for mobile and desktop.",
+  "author": "yathinm",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -85,8 +87,12 @@
       "target": ["nsis", "portable"]
     },
     "nsis": {
+      "artifactName": "Loopy-Reminders-Setup-${version}-${arch}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "portable": {
+      "artifactName": "Loopy-Reminders-Portable-${version}-${arch}.${ext}"
     }
   }
 }
