@@ -35,7 +35,8 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
       recurrence_json TEXT,
       series_id TEXT,
       notification_id TEXT,
-      snoozed_until TEXT
+      snoozed_until TEXT,
+      deleted_at TEXT
     );
     CREATE TABLE IF NOT EXISTS tags (
       id TEXT PRIMARY KEY NOT NULL,
@@ -66,6 +67,11 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
   await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (1)');
   await db.runAsync("UPDATE lists SET color = '#C97882', updated_at = ? WHERE id = ? AND is_inbox = 1 AND color <> '#C97882'", now, INBOX_ID);
   await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (2)');
+  const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(reminders)');
+  if (!columns.some((column) => column.name === 'deleted_at')) {
+    await db.execAsync('ALTER TABLE reminders ADD COLUMN deleted_at TEXT');
+  }
+  await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (3)');
 }
 
 type ListRow = {
@@ -78,7 +84,7 @@ type ReminderRow = {
   due_at: string | null; has_time: number; is_completed: number; completed_at: string | null;
   priority: number; is_flagged: number; sort_order: number; list_id: string;
   recurrence_json: string | null; series_id: string | null; notification_id: string | null;
-  snoozed_until: string | null;
+  snoozed_until: string | null; deleted_at: string | null;
 };
 
 export async function fetchLists(db: SQLiteDatabase): Promise<ReminderList[]> {
@@ -89,8 +95,10 @@ export async function fetchLists(db: SQLiteDatabase): Promise<ReminderList[]> {
   }));
 }
 
-export async function fetchReminders(db: SQLiteDatabase): Promise<Reminder[]> {
-  const rows = await db.getAllAsync<ReminderRow>('SELECT * FROM reminders ORDER BY sort_order, created_at');
+export async function fetchReminders(db: SQLiteDatabase, includeDeleted = false): Promise<Reminder[]> {
+  const rows = await db.getAllAsync<ReminderRow>(
+    `SELECT * FROM reminders WHERE deleted_at ${includeDeleted ? 'IS NOT NULL' : 'IS NULL'} ORDER BY sort_order, created_at`,
+  );
   const tagRows = await db.getAllAsync<{ reminder_id: string; id: string; name: string }>(
     `SELECT rt.reminder_id, t.id, t.name FROM reminder_tags rt
      JOIN tags t ON t.id = rt.tag_id ORDER BY t.name COLLATE NOCASE`,
@@ -105,7 +113,7 @@ export async function fetchReminders(db: SQLiteDatabase): Promise<Reminder[]> {
     sortOrder: row.sort_order, listId: row.list_id,
     recurrence: parseRecurrence(row.recurrence_json),
     seriesId: row.series_id, notificationId: row.notification_id,
-    snoozedUntil: row.snoozed_until, tags: tags.get(row.id) ?? [],
+    snoozedUntil: row.snoozed_until, deletedAt: row.deleted_at, tags: tags.get(row.id) ?? [],
   }));
 }
 

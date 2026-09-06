@@ -19,7 +19,7 @@ const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.gl
 
 export default function HomeScreen() {
   const router = useRouter(); const colors = colorsFor(useColorScheme());
-  const { reminders, lists, loading, error, onboardingComplete, completeOnboarding } = useReminders();
+  const { reminders, deletedReminders, lists, loading, error, onboardingComplete, completeOnboarding } = useReminders();
   if (loading) return <View style={[styles.center, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.accent} /></View>;
   return (
     <Screen scroll={false}>
@@ -50,12 +50,12 @@ export default function HomeScreen() {
             <Ionicons name="chevron-forward" size={17} color={colors.secondaryText} />
           </Pressable>
         ))}
-        <View style={[styles.listRow, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]} accessibilityLabel="Recently Deleted, 0 reminders">
+        <Pressable onPress={() => router.push('/recently-deleted')} style={[styles.listRow, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]} accessibilityRole="button" accessibilityLabel={`Recently Deleted, ${deletedReminders.length} reminders`}>
           <View style={[styles.listIcon, { backgroundColor: colors.border }]}><Ionicons name="trash-outline" size={18} color={colors.secondaryText} /></View>
           <Text style={[styles.listName, { color: colors.text }]}>Recently Deleted</Text>
-          <Text style={{ color: colors.secondaryText }}>0</Text>
+          <Text style={{ color: colors.secondaryText }}>{deletedReminders.length}</Text>
           <Ionicons name="chevron-forward" size={17} color={colors.secondaryText} />
-        </View>
+        </Pressable>
         </View>
       </ScrollView>
       <Pressable accessibilityRole="button" accessibilityLabel="Add reminder" onPress={() => router.push('/reminder/new')} style={({ pressed }) => [styles.fab, { backgroundColor: colors.accent, opacity: pressed ? 0.78 : 1 }]}><Ionicons name="add" size={28} color={colors.onColor} /></Pressable>

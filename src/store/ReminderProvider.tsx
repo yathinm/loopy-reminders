@@ -10,6 +10,7 @@ import { cancelReminderNotification, COMPLETE_ACTION, configureNotifications, sc
 
 type ReminderContextValue = {
   reminders: Reminder[];
+  deletedReminders: Reminder[];
   lists: ReminderList[];
   tags: ReminderTag[];
   loading: boolean;
@@ -18,6 +19,8 @@ type ReminderContextValue = {
   refresh: () => Promise<void>;
   saveReminder: (draft: ReminderDraft, id?: string) => Promise<string>;
   deleteReminder: (id: string) => Promise<void>;
+  restoreReminder: (id: string) => Promise<void>;
+  permanentlyDeleteReminder: (id: string) => Promise<void>;
   toggleReminder: (id: string, completed?: boolean) => Promise<void>;
   createList: (name: string, color: string, symbol: string) => Promise<string>;
   updateList: (id: string, name: string, color: string, symbol: string) => Promise<void>;
@@ -31,6 +34,7 @@ const ReminderContext = createContext<ReminderContextValue | null>(null);
 export function ReminderProvider({ children }: PropsWithChildren) {
   const db = useSQLiteContext();
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [deletedReminders, setDeletedReminders] = useState<Reminder[]>([]);
   const [lists, setLists] = useState<ReminderList[]>([]);
   const [tags, setTags] = useState<ReminderTag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,11 +43,11 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
   const refresh = useCallback(async () => {
     try {
-      const [nextReminders, nextLists, nextTags, onboarding] = await Promise.all([
-        fetchReminders(db), fetchLists(db), fetchTags(db),
+      const [nextReminders, nextDeletedReminders, nextLists, nextTags, onboarding] = await Promise.all([
+        fetchReminders(db), fetchReminders(db, true), fetchLists(db), fetchTags(db),
         db.getFirstAsync<{ value: string }>("SELECT value FROM app_settings WHERE key='onboarding_complete'"),
       ]);
-      setReminders(nextReminders); setLists(nextLists); setTags(nextTags); setError(null);
+      setReminders(nextReminders); setDeletedReminders(nextDeletedReminders); setLists(nextLists); setTags(nextTags); setError(null);
       setOnboardingComplete(onboarding?.value === 'true');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to load reminders.');
@@ -114,9 +118,19 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   const deleteReminder = useCallback(async (id: string) => {
     const existing = reminders.find((item) => item.id === id);
     await cancelReminderNotification(existing?.notificationId ?? null);
-    await db.runAsync('DELETE FROM reminders WHERE id = ?', id);
-    await removeOrphanedTags(db); await refresh();
+    await db.runAsync('UPDATE reminders SET deleted_at=?, notification_id=NULL, updated_at=? WHERE id=?', new Date().toISOString(), new Date().toISOString(), id);
+    await refresh();
   }, [db, refresh, reminders]);
+
+  const restoreReminder = useCallback(async (id: string) => {
+    await db.runAsync('UPDATE reminders SET deleted_at=NULL, updated_at=? WHERE id=?', new Date().toISOString(), id);
+    await refresh(); await reconcileNotifications();
+  }, [db, refresh, reconcileNotifications]);
+
+  const permanentlyDeleteReminder = useCallback(async (id: string) => {
+    await db.runAsync('DELETE FROM reminders WHERE id=?', id);
+    await removeOrphanedTags(db); await refresh();
+  }, [db, refresh]);
 
   const toggleReminder = useCallback(async (id: string, completed?: boolean) => {
     const item = (await fetchReminders(db)).find((reminder) => reminder.id === id);
@@ -198,7 +212,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     await refresh();
   }, [db, refresh]);
 
-  const value = useMemo(() => ({ reminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, toggleReminder, createList, updateList, deleteList, completeOnboarding, deleteAllData }), [reminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, toggleReminder, createList, updateList, deleteList, completeOnboarding, deleteAllData]);
+  const value = useMemo(() => ({ reminders, deletedReminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, createList, updateList, deleteList, completeOnboarding, deleteAllData }), [reminders, deletedReminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, createList, updateList, deleteList, completeOnboarding, deleteAllData]);
   return <ReminderContext.Provider value={value}>{children}</ReminderContext.Provider>;
 }
 

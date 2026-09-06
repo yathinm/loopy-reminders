@@ -41,6 +41,7 @@ export interface Reminder {
   seriesId: string | null;
   notificationId: string | null;
   snoozedUntil: string | null;
+  deletedAt?: string | null;
   tags: ReminderTag[];
 }
 
@@ -57,4 +58,3 @@ export interface ReminderDraft {
 }
 
 export type SmartList = 'today' | 'scheduled' | 'all' | 'flagged' | 'completed';
-
