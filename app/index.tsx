@@ -50,6 +50,12 @@ export default function HomeScreen() {
             <Ionicons name="chevron-forward" size={17} color={colors.secondaryText} />
           </Pressable>
         ))}
+        <View style={[styles.listRow, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]} accessibilityLabel="Recently Deleted, 0 reminders">
+          <View style={[styles.listIcon, { backgroundColor: colors.border }]}><Ionicons name="trash-outline" size={18} color={colors.secondaryText} /></View>
+          <Text style={[styles.listName, { color: colors.text }]}>Recently Deleted</Text>
+          <Text style={{ color: colors.secondaryText }}>0</Text>
+          <Ionicons name="chevron-forward" size={17} color={colors.secondaryText} />
+        </View>
         </View>
       </ScrollView>
       <Pressable accessibilityRole="button" accessibilityLabel="Add reminder" onPress={() => router.push('/reminder/new')} style={({ pressed }) => [styles.fab, { backgroundColor: colors.accent, opacity: pressed ? 0.78 : 1 }]}><Ionicons name="add" size={28} color={colors.onColor} /></Pressable>
