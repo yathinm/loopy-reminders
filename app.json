@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Loopy Reminders",
+    "slug": "loopy-reminders",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "scheme": "loopyreminders",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yathinm.LoopyReminders",
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "Loopy uses notifications to remind you about tasks at the times you choose."
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      ["expo-notifications", { "defaultChannel": "reminders" }]
+    ]
+  }
+}

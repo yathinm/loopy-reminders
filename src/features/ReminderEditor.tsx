@@ -1,0 +1,73 @@
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, useColorScheme, View } from 'react-native';
+import { Frequency, Priority, ReminderDraft } from '@/domain/types';
+import { recurrenceLabel } from '@/domain/recurrence';
+import { useReminders } from '@/store/ReminderProvider';
+import { colorsFor, spacing } from '@/theme/theme';
+
+const priorities: Priority[] = [0, 1, 2, 3];
+const priorityNames = ['None', 'Low', 'Medium', 'High'];
+const frequencies: Frequency[] = ['daily', 'weekly', 'monthly', 'yearly'];
+
+export function ReminderEditor({ reminderId, initialListId }: { reminderId?: string; initialListId?: string }) {
+  const router = useRouter(); const colors = colorsFor(useColorScheme());
+  const { reminders, lists, saveReminder, deleteReminder } = useReminders();
+  const reminder = useMemo(() => reminders.find((item) => item.id === reminderId), [reminderId, reminders]);
+  const inbox = lists.find((item) => item.isInbox)?.id ?? lists[0]?.id ?? '';
+  const [title, setTitle] = useState(reminder?.title ?? '');
+  const [notes, setNotes] = useState(reminder?.notes ?? '');
+  const [dueAt, setDueAt] = useState(() => reminder?.dueAt ? new Date(reminder.dueAt) : new Date(new Date().getTime() + 60 * 60 * 1000));
+  const [hasDate, setHasDate] = useState(Boolean(reminder?.dueAt));
+  const [hasTime, setHasTime] = useState(reminder?.hasTime ?? true);
+  const [priority, setPriority] = useState<Priority>(reminder?.priority ?? 0);
+  const [flagged, setFlagged] = useState(reminder?.isFlagged ?? false);
+  const [listId, setListId] = useState(reminder?.listId ?? initialListId ?? inbox);
+  const [recurrence, setRecurrence] = useState(reminder?.recurrence ?? null);
+  const [tags, setTags] = useState(reminder?.tags.map((tag) => tag.name).join(', ') ?? '');
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    const draft: ReminderDraft = { title, notes, dueAt: hasDate ? dueAt : null, hasTime: hasDate && hasTime, priority, isFlagged: flagged, listId, recurrence: hasDate ? recurrence : null, tagNames: tags.split(',') };
+    try { setSaving(true); await saveReminder(draft, reminderId); router.back(); }
+    catch (reason) { Alert.alert('Could not save reminder', reason instanceof Error ? reason.message : 'Please try again.'); setSaving(false); }
+  }
+
+  function confirmDelete() {
+    Alert.alert('Delete reminder?', 'This cannot be undone.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => void deleteReminder(reminderId!).then(() => router.back()) }]);
+  }
+
+  return (
+    <KeyboardAvoidingView style={[styles.flex, { backgroundColor: colors.background }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+        <View style={styles.topActions}><Pressable onPress={() => router.back()}><Text style={[styles.actionText, { color: colors.accent }]}>Cancel</Text></Pressable><Pressable disabled={!title.trim() || saving} onPress={save}><Text style={[styles.actionText, { color: colors.accent, opacity: !title.trim() || saving ? 0.4 : 1 }]}>{saving ? 'Saving…' : 'Save'}</Text></Pressable></View>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TextInput accessibilityLabel="Reminder title" autoFocus={!reminderId} placeholder="What should Loopy remember?" placeholderTextColor={colors.secondaryText} value={title} onChangeText={setTitle} maxLength={500} style={[styles.titleInput, { color: colors.text, borderBottomColor: colors.border }]} />
+          <TextInput accessibilityLabel="Notes" placeholder="Notes" placeholderTextColor={colors.secondaryText} value={notes} onChangeText={setNotes} multiline style={[styles.notesInput, { color: colors.text }]} />
+        </View>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <SettingRow icon="calendar" label="Date" colors={colors}><Switch value={hasDate} onValueChange={setHasDate} trackColor={{ true: colors.brand }} /></SettingRow>
+          {hasDate && <><View style={styles.pickerWrap}><DateTimePicker value={dueAt} mode="date" minimumDate={new Date()} onChange={(_, date) => date && setDueAt(date)} accentColor={colors.accent} /></View><SettingRow icon="time" label="Time" colors={colors}><Switch value={hasTime} onValueChange={setHasTime} trackColor={{ true: colors.brand }} /></SettingRow>{hasTime && <View style={styles.pickerWrap}><DateTimePicker value={dueAt} mode="time" onChange={(_, date) => date && setDueAt(date)} accentColor={colors.accent} /></View>}</>}
+        </View>
+        {hasDate && <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text style={[styles.label, { color: colors.text }]}>Repeat · {recurrenceLabel(recurrence)}</Text><View style={styles.chips}><Choice label="Never" active={!recurrence} onPress={() => setRecurrence(null)} colors={colors} />{frequencies.map((frequency) => <Choice key={frequency} label={frequency[0]!.toUpperCase() + frequency.slice(1)} active={recurrence?.frequency === frequency} onPress={() => setRecurrence({ frequency, interval: 1, weekdays: frequency === 'weekly' ? [dueAt.getDay()] : undefined })} colors={colors} />)}</View></View>}
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.label, { color: colors.text }]}>List</Text><View style={styles.chips}>{lists.map((list) => <Choice key={list.id} label={list.name} active={listId === list.id} onPress={() => setListId(list.id)} colors={colors} />)}</View>
+          <Text style={[styles.label, { color: colors.text, marginTop: 15 }]}>Priority</Text><View style={styles.chips}>{priorities.map((value) => <Choice key={value} label={priorityNames[value]!} active={priority === value} onPress={() => setPriority(value)} colors={colors} />)}</View>
+          <SettingRow icon="flag" label="Flagged" colors={colors}><Switch value={flagged} onValueChange={setFlagged} trackColor={{ true: colors.brand }} /></SettingRow>
+        </View>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text style={[styles.label, { color: colors.text }]}>Tags</Text><TextInput accessibilityLabel="Tags separated by commas" placeholder="school, errands, health" placeholderTextColor={colors.secondaryText} value={tags} onChangeText={setTags} autoCapitalize="none" style={[styles.tagInput, { color: colors.text, borderColor: colors.border }]} /><Text style={[styles.hint, { color: colors.secondaryText }]}>Separate tags with commas.</Text></View>
+        {reminderId && <Pressable onPress={confirmDelete} style={[styles.deleteButton, { borderColor: colors.danger }]}><Text style={{ color: colors.danger, fontWeight: '800' }}>Delete Reminder</Text></Pressable>}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+function SettingRow({ icon, label, colors, children }: { icon: keyof typeof Ionicons.glyphMap; label: string; colors: ReturnType<typeof colorsFor>; children: React.ReactNode }) {
+  return <View style={styles.row}><Ionicons name={icon} size={20} color={colors.accent} /><Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>{children}</View>;
+}
+function Choice({ label, active, onPress, colors }: { label: string; active: boolean; onPress: () => void; colors: ReturnType<typeof colorsFor> }) {
+  return <Pressable accessibilityRole="radio" accessibilityState={{ selected: active }} onPress={onPress} style={[styles.chip, { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.softBrand : colors.background }]}><Text style={{ color: active ? colors.accent : colors.secondaryText, fontWeight: active ? '700' : '500' }}>{label}</Text></Pressable>;
+}
+const styles = StyleSheet.create({ flex: { flex: 1 }, content: { padding: spacing.lg, paddingBottom: 60 }, topActions: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }, actionText: { fontSize: 17, fontWeight: '700' }, card: { borderRadius: 17, padding: 14, borderWidth: StyleSheet.hairlineWidth, marginBottom: 13 }, titleInput: { fontSize: 19, fontWeight: '700', paddingVertical: 9, borderBottomWidth: StyleSheet.hairlineWidth }, notesInput: { minHeight: 72, fontSize: 16, paddingTop: 12, textAlignVertical: 'top' }, row: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10 }, rowLabel: { fontSize: 16, fontWeight: '600', flex: 1 }, pickerWrap: { alignItems: 'flex-start' }, label: { fontSize: 15, fontWeight: '800', marginBottom: 10 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 9 }, tagInput: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 11, padding: 11, fontSize: 16 }, hint: { fontSize: 12, marginTop: 6 }, deleteButton: { height: 50, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' } });
