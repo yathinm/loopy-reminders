@@ -40,7 +40,7 @@ export default function HomeScreen() {
           </Pressable>
         ))}
         </View>
-        <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>My Lists</Text><Pressable accessibilityLabel="Create a new list" hitSlop={10} onPress={() => router.push('/list-editor')}><Ionicons name="add-circle" size={27} color={colors.accent} /></Pressable></View>
+        <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>My Lists</Text></View>
         <View style={[styles.listBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         {lists.map((list, index) => (
           <Pressable key={list.id} onPress={() => router.push({ pathname: '/list/[id]', params: { id: list.id } })} style={[styles.listRow, index < lists.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
