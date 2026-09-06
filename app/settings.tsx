@@ -1,17 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
 import React, { useEffect, useState } from 'react';
 import { AppState, Linking, Pressable, StyleSheet, Switch, Text, useColorScheme, View } from 'react-native';
 import { Screen } from '@/components/Screen';
-import { ensureNotificationPermission } from '@/services/notifications';
+import { ensureNotificationPermission, getNotificationPermissionStatus } from '@/services/notifications';
 import { colorsFor } from '@/theme/theme';
 
 export default function SettingsScreen() {
   const colors = colorsFor(useColorScheme());
-  const [notificationStatus, setNotificationStatus] = useState<Notifications.PermissionStatus>(Notifications.PermissionStatus.UNDETERMINED);
+  const [notificationStatus, setNotificationStatus] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
   async function refreshSettings() {
-    const permissions = await Notifications.getPermissionsAsync();
-    setNotificationStatus(permissions.status);
+    setNotificationStatus(await getNotificationPermissionStatus());
   }
   useEffect(() => {
     void refreshSettings();
@@ -20,14 +18,14 @@ export default function SettingsScreen() {
   }, []);
 
   async function toggleNotifications(value: boolean) {
-    if (value) { const allowed = await ensureNotificationPermission(); setNotificationStatus(allowed ? Notifications.PermissionStatus.GRANTED : Notifications.PermissionStatus.DENIED); }
+    if (value) { const allowed = await ensureNotificationPermission(); setNotificationStatus(allowed ? 'granted' : 'denied'); }
     else await Linking.openSettings();
   }
 
-  const granted = notificationStatus === Notifications.PermissionStatus.GRANTED;
+  const granted = notificationStatus === 'granted';
   return <Screen>
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Row icon="notifications" label="Notifications" detail={notificationStatus === Notifications.PermissionStatus.DENIED ? 'Disabled in Settings' : undefined} colors={colors}><Switch value={granted} onValueChange={(value) => void toggleNotifications(value)} trackColor={{ true: colors.brand }} /></Row>
+      <Row icon="notifications" label="Notifications" detail={notificationStatus === 'denied' ? 'Disabled in Settings' : undefined} colors={colors}><Switch value={granted} onValueChange={(value) => void toggleNotifications(value)} trackColor={{ true: colors.brand }} /></Row>
       <Pressable onPress={() => void Linking.openSettings()} style={[styles.linkRow, { borderTopColor: colors.border }]}><Ionicons name="settings-outline" size={20} color={colors.accent} /><Text style={[styles.link, { color: colors.text }]}>Open iOS Settings</Text><Ionicons name="open-outline" size={17} color={colors.secondaryText} /></Pressable>
     </View>
   </Screen>;

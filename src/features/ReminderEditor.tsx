@@ -1,9 +1,9 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, useColorScheme, View } from 'react-native';
 import { Frequency, Priority, ReminderDraft } from '@/domain/types';
+import DateTimePicker from '@/components/DateTimeField';
 import { recurrenceLabel } from '@/domain/recurrence';
 import { useReminders } from '@/store/ReminderProvider';
 import { colorsFor, spacing } from '@/theme/theme';
