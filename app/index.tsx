@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
-import { WelcomeSheet } from '@/components/WelcomeSheet';
 import { Screen } from '@/components/Screen';
 import { filterSmartList } from '@/domain/filters';
 import { SmartList } from '@/domain/types';
@@ -19,11 +18,10 @@ const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.gl
 
 export default function HomeScreen() {
   const router = useRouter(); const colors = colorsFor(useColorScheme());
-  const { reminders, deletedReminders, lists, loading, error, onboardingComplete, completeOnboarding } = useReminders();
+  const { reminders, deletedReminders, lists, loading, error } = useReminders();
   if (loading) return <View style={[styles.center, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.accent} /></View>;
   return (
     <Screen scroll={false}>
-      <WelcomeSheet visible={!onboardingComplete} onFinish={completeOnboarding} />
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <View style={styles.toolbar}>
         <Pressable accessibilityRole="button" accessibilityLabel="Search reminders" onPress={() => router.push('/search')} style={[styles.searchButton, { backgroundColor: colors.surface, borderColor: colors.border }]}>
