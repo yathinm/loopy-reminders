@@ -37,6 +37,6 @@ function AppNavigator() {
 function DesktopBackButton({ color }: { color: string }) {
   const router = useRouter();
   if (!router.canGoBack()) return null;
-  return <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={{ marginLeft: 16, marginTop: 12, padding: 8 }}><Ionicons name="arrow-back" size={27} color={color} /></Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={{ marginLeft: 16, padding: 8 }}><Ionicons name="arrow-back" size={27} color={color} /></Pressable>;
 }
 const styles = StyleSheet.create({ loading: { flex: 1, alignItems: 'center', justifyContent: 'center' } });
