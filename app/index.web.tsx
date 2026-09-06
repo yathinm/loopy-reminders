@@ -305,7 +305,7 @@ function sortDesktopReminders(items: Reminder[], mode: SortMode) {
 const styles = StyleSheet.create({
   desktop: { flex: 1, flexDirection: 'row' },
   sidebar: { width: '34%', minWidth: 320, maxWidth: 420, borderRightWidth: StyleSheet.hairlineWidth },
-  sidebarTop: { paddingHorizontal: 18, paddingTop: 24, paddingBottom: 14, gap: 22 },
+  sidebarTop: { paddingHorizontal: 18, paddingTop: 68, paddingBottom: 14, gap: 22 },
   brand: { fontSize: 22, fontWeight: '900' },
   search: { height: 46, borderWidth: StyleSheet.hairlineWidth, borderRadius: 13, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 9 },
   searchInput: { flex: 1, fontSize: 16, outlineStyle: 'none' } as never,
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   addList: { height: 52, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 9 },
   addListText: { fontSize: 16, fontWeight: '800' },
   workspace: { flex: 1 },
-  workspaceHeader: { minHeight: 122, paddingHorizontal: 32, paddingTop: 28, paddingBottom: 18, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  workspaceHeader: { minHeight: 166, paddingHorizontal: 32, paddingTop: 68, paddingBottom: 18, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   workspaceTitle: { fontSize: 42, lineHeight: 49, fontWeight: '900' },
   resultCount: { marginTop: 2, fontSize: 14 },
   addReminder: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
