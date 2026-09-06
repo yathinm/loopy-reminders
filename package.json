@@ -83,7 +83,7 @@
       "target": ["dmg", "zip"]
     },
     "win": {
-      "icon": "assets/app-icon.png",
+      "icon": "assets/desktop/icon.png",
       "target": ["nsis", "portable"]
     },
     "nsis": {

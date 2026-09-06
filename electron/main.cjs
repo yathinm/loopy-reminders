@@ -30,7 +30,7 @@ function createWindow(startUrl) {
     show: false,
     backgroundColor: '#FFF7F4',
     title: 'Loopy Reminders',
-    icon: path.join(__dirname, '..', 'assets', 'app-icon.png'),
+    icon: path.join(__dirname, '..', 'assets', 'desktop', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -66,7 +66,7 @@ function configureWebCompatibility() {
 }
 
 function createTray() {
-  const image = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'app-icon.png')).resize({ width: 18, height: 18 });
+  const image = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'desktop', 'icon.png')).resize({ width: 18, height: 18 });
   tray = new Tray(image);
   tray.setToolTip('Loopy Reminders');
   tray.setContextMenu(Menu.buildFromTemplate([
@@ -82,7 +82,7 @@ function scheduleTimer(entry) {
   if (remaining <= 0) {
     schedules.delete(entry.id);
     if (Notification.isSupported()) {
-      const notification = new Notification({ title: entry.title, body: entry.body, icon: path.join(__dirname, '..', 'assets', 'app-icon.png') });
+      const notification = new Notification({ title: entry.title, body: entry.body, icon: path.join(__dirname, '..', 'assets', 'desktop', 'icon.png') });
       notification.on('click', () => { showWindow(); mainWindow?.webContents.send('loopy:notification-clicked', entry.reminderId); });
       notification.show();
     }
