@@ -32,7 +32,7 @@ export function ReminderRow({ reminder, onToggle, onPress, onFlag, onDelete }: {
 function formatDue(date: Date, hasTime: boolean) { const dateText = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date); return hasTime ? dateText + ', ' + new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(date) : dateText; }
 
 const styles = StyleSheet.create({
-  container: { width: '100%', alignSelf: 'stretch', minHeight: 72, borderBottomWidth: StyleSheet.hairlineWidth, overflow: 'hidden' }, content: { width: '100%', flexDirection: 'row', paddingVertical: 13, paddingHorizontal: 14, gap: spacing.md, zIndex: 1 },
+  container: { width: '100%', alignSelf: 'stretch', minHeight: 72, borderBottomWidth: StyleSheet.hairlineWidth, overflow: 'hidden' }, content: { width: '100%', flexDirection: 'row', paddingVertical: 13, paddingHorizontal: 14, gap: spacing.md, zIndex: 3 },
   actions: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 210, flexDirection: 'row', zIndex: 2 }, action: { width: 70, alignItems: 'center', justifyContent: 'center', gap: 3 },
   check: { width: 25, height: 25, borderRadius: 13, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginTop: 1 }, body: { flex: 1 }, titleLine: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   title: { fontSize: 17, lineHeight: 22, flexShrink: 1 }, notes: { fontSize: 14, marginTop: 2 }, meta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 5 }, due: { fontSize: 13, fontWeight: '600' }, tag: { fontSize: 12, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 7 },
