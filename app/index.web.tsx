@@ -37,16 +37,14 @@ export default function DesktopHomeScreen() {
   const [selection, setSelection] = useState<Selection>({ kind: 'smart', id: 'today' });
   const [query, setQuery] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
-  const [submenu, setSubmenu] = useState<'sort' | 'group' | null>(null);
+  const [submenu, setSubmenu] = useState<'sort' | null>(null);
   const [pinnedLists, setPinnedLists] = useState<string[]>(() => readDesktopStorage('loopy:pinned-lists', []));
   const [showCompletedLists, setShowCompletedLists] = useState<string[]>(() => readDesktopStorage('loopy:show-completed-lists', []));
   const [sortMode, setSortMode] = useState<SortMode>(() => readDesktopStorage('loopy:sort-mode', 'due'));
-  const [groups, setGroups] = useState<Record<string, string[]>>(() => readDesktopStorage('loopy:list-groups', {}));
 
   useEffect(() => writeDesktopStorage('loopy:pinned-lists', pinnedLists), [pinnedLists]);
   useEffect(() => writeDesktopStorage('loopy:show-completed-lists', showCompletedLists), [showCompletedLists]);
   useEffect(() => writeDesktopStorage('loopy:sort-mode', sortMode), [sortMode]);
-  useEffect(() => writeDesktopStorage('loopy:list-groups', groups), [groups]);
 
   const selectedList = selection.kind === 'list' ? lists.find((list) => list.id === selection.id) : undefined;
   const title = query.trim()
@@ -94,37 +92,15 @@ export default function DesktopHomeScreen() {
 
   function closeContextMenu() { setContextMenu(null); setSubmenu(null); }
 
-  async function shareList(listName: string) {
-    const text = `Loopy Reminders list: ${listName}`;
-    try {
-      if (typeof navigator.share === 'function') await navigator.share({ title: listName, text });
-      else if (navigator.clipboard) await navigator.clipboard.writeText(text);
-      Alert.alert('List shared', typeof navigator.share === 'function' ? 'Share sheet opened.' : 'List details copied to the clipboard.');
-    } catch { /* cancelled share */ }
-    closeContextMenu();
-  }
-
-  function createGroup(listId: string) {
-    const name = typeof window !== 'undefined' ? window.prompt('New group name')?.trim() : '';
-    if (!name) return;
-    setGroups((current) => ({ ...current, [name]: [...new Set([...(current[name] ?? []), listId])] }));
-    closeContextMenu();
-  }
-
-  function showListInfo(listId: string) {
-    const list = lists.find((item) => item.id === listId); if (!list) return;
-    const items = reminders.filter((item) => item.listId === listId);
-    Alert.alert(list.name, `${items.length} reminders\n${items.filter((item) => item.isCompleted).length} completed`);
-    closeContextMenu();
-  }
-
-  function deleteSelectedList(listId: string) {
+  async function deleteSelectedList(listId: string) {
     const list = lists.find((item) => item.id === listId); if (!list || list.isInbox) return;
-    Alert.alert('Delete list?', `Reminders in “${list.name}” will move to Reminders.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => void deleteList(listId) },
-    ]);
+    const confirmed = typeof window !== 'undefined'
+      ? window.confirm(`Delete “${list.name}”? Its reminders will move to Reminders.`)
+      : true;
     closeContextMenu();
+    if (!confirmed) return;
+    await deleteList(listId);
+    if (selection.kind === 'list' && selection.id === listId) choose({ kind: 'smart', id: 'all' });
   }
 
   function confirmPermanentDelete(reminder: Reminder) {
@@ -241,26 +217,21 @@ export default function DesktopHomeScreen() {
         submenu={submenu}
         isPinned={pinnedLists.includes(contextMenu.listId)}
         showingCompleted={showCompletedLists.includes(contextMenu.listId)}
-        groups={groups}
         sortMode={sortMode}
         onClose={closeContextMenu}
         onSubmenu={setSubmenu}
         onPin={() => { setPinnedLists((current) => current.includes(contextMenu.listId) ? current.filter((id) => id !== contextMenu.listId) : [contextMenu.listId, ...current]); closeContextMenu(); }}
-        onInfo={() => showListInfo(contextMenu.listId)}
         onCompleted={() => { setShowCompletedLists((current) => current.includes(contextMenu.listId) ? current.filter((id) => id !== contextMenu.listId) : [...current, contextMenu.listId]); closeContextMenu(); }}
         onOpenWindow={() => { void window.loopyDesktop?.openListWindow?.(contextMenu.listId); closeContextMenu(); }}
         onSort={(mode: SortMode) => { setSortMode(mode); closeContextMenu(); }}
         onRename={() => { closeContextMenu(); router.push({ pathname: '/list-editor', params: { id: contextMenu.listId } }); }}
-        onDelete={() => deleteSelectedList(contextMenu.listId)}
-        onGroup={(name: string) => { setGroups((current) => ({ ...current, [name]: [...new Set([...(current[name] ?? []), contextMenu.listId])] })); closeContextMenu(); }}
-        onNewGroup={() => createGroup(contextMenu.listId)}
-        onShare={() => void shareList(lists.find((list) => list.id === contextMenu.listId)?.name ?? 'Reminders')}
+        onDelete={() => void deleteSelectedList(contextMenu.listId)}
       />}
     </View>
   );
 }
 
-function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingCompleted, groups, sortMode, onClose, onSubmenu, onPin, onInfo, onCompleted, onOpenWindow, onSort, onRename, onDelete, onGroup, onNewGroup, onShare }: any) {
+function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingCompleted, sortMode, onClose, onSubmenu, onPin, onCompleted, onOpenWindow, onSort, onRename, onDelete }: any) {
   if (!list) return null;
   const left = Math.max(8, Math.min(x, (typeof window !== 'undefined' ? window.innerWidth : 900) - 300));
   const top = Math.max(8, Math.min(y, (typeof window !== 'undefined' ? window.innerHeight : 700) - 510));
@@ -268,7 +239,6 @@ function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingComp
     <Pressable onPress={onClose} style={styles.menuBackdrop} />
     <View style={[styles.contextMenu, { left, top, backgroundColor: colors.surface, borderColor: colors.border }]}>
       <MenuItem label={isPinned ? 'Unpin List' : 'Pin List'} colors={colors} onPress={onPin} />
-      <MenuItem label="Show List Info" colors={colors} onPress={onInfo} />
       <MenuItem label={showingCompleted ? 'Hide Completed' : 'Show Completed'} colors={colors} shortcut="⇧⌘H" onPress={onCompleted} />
       <MenuDivider colors={colors} />
       <MenuItem label="Open List in New Window" colors={colors} onPress={onOpenWindow} />
@@ -280,15 +250,8 @@ function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingComp
         <MenuItem label="Manual" colors={colors} selected={sortMode === 'manual'} onPress={() => onSort('manual')} />
       </View>}
       <MenuDivider colors={colors} />
-      <MenuItem label="Rename" colors={colors} onPress={onRename} />
+      <MenuItem label="Edit" colors={colors} onPress={onRename} />
       <MenuItem label="Delete" colors={colors} onPress={onDelete} disabled={list.isInbox} />
-      <MenuItem label="Add to Group" colors={colors} arrow onPress={() => onSubmenu(submenu === 'group' ? null : 'group')} />
-      {submenu === 'group' && <View style={[styles.submenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        {Object.keys(groups).map((name) => <MenuItem key={name} label={name} colors={colors} onPress={() => onGroup(name)} />)}
-        <MenuItem label="Create New Group…" colors={colors} onPress={onNewGroup} />
-      </View>}
-      <MenuDivider colors={colors} />
-      <MenuItem label="Share List" colors={colors} onPress={onShare} />
     </View>
   </>;
 }
