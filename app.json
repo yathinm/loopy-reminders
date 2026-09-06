@@ -13,6 +13,8 @@
       "bundleIdentifier": "com.yathinm.LoopyReminders",
       "icon": "./assets/app-icon.png",
       "infoPlist": {
+        "CFBundleDisplayName": "Loopy Reminders",
+        "CFBundleName": "Loopy Reminders",
         "NSUserNotificationsUsageDescription": "Loopy uses notifications to remind you about tasks at the times you choose."
       }
     },
