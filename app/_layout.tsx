@@ -1,8 +1,9 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { ActivityIndicator, Platform, StyleSheet, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppFrame } from '@/components/AppFrame';
 import { migrateDatabase } from '@/data/database';
@@ -30,6 +31,12 @@ function AppNavigator() {
   const scheme = useColorScheme(); const colors = colorsFor(scheme); const { loading } = useReminders();
   if (loading) return <View style={[styles.loading, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.accent} /></View>;
   const webHeader = Platform.OS === 'web' ? { height: 68 } : {};
-  return <><StatusBar style={scheme === 'dark' ? 'light' : 'dark'} /><Stack screenOptions={{ headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.background, ...webHeader }, headerShadowVisible: false, contentStyle: { backgroundColor: colors.background }, headerBackButtonDisplayMode: 'minimal' }}><Stack.Screen name="index" options={{ title: 'Loopy Reminders' }} /><Stack.Screen name="list/[id]" options={{ title: 'Reminders' }} /><Stack.Screen name="recently-deleted" options={{ title: 'Recently Deleted' }} /><Stack.Screen name="reminder/new" options={{ title: 'New Reminder', presentation: 'modal' }} /><Stack.Screen name="reminder/[id]" options={{ title: 'Edit Reminder', presentation: 'modal' }} /><Stack.Screen name="search" options={{ title: 'Search' }} /><Stack.Screen name="settings" options={{ title: 'Settings', headerLargeTitle: true }} /><Stack.Screen name="list-editor" options={{ title: 'List', presentation: 'modal' }} /></Stack></>;
+  return <><StatusBar style={scheme === 'dark' ? 'light' : 'dark'} /><Stack screenOptions={{ headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.background, ...webHeader }, headerShadowVisible: false, contentStyle: { backgroundColor: colors.background }, headerBackButtonDisplayMode: 'minimal', headerBackVisible: Platform.OS !== 'web', headerLeft: Platform.OS === 'web' ? () => <DesktopBackButton color={colors.accent} /> : undefined }}><Stack.Screen name="index" options={{ title: 'Loopy Reminders' }} /><Stack.Screen name="list/[id]" options={{ title: 'Reminders' }} /><Stack.Screen name="recently-deleted" options={{ title: 'Recently Deleted' }} /><Stack.Screen name="reminder/new" options={{ title: 'New Reminder', presentation: 'modal' }} /><Stack.Screen name="reminder/[id]" options={{ title: 'Edit Reminder', presentation: 'modal' }} /><Stack.Screen name="search" options={{ title: 'Search' }} /><Stack.Screen name="settings" options={{ title: 'Settings', headerLargeTitle: true }} /><Stack.Screen name="list-editor" options={{ title: 'List', presentation: 'modal' }} /></Stack></>;
+}
+
+function DesktopBackButton({ color }: { color: string }) {
+  const router = useRouter();
+  if (!router.canGoBack()) return null;
+  return <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={{ marginLeft: 48, padding: 8 }}><Ionicons name="arrow-back" size={27} color={color} /></Pressable>;
 }
 const styles = StyleSheet.create({ loading: { flex: 1, alignItems: 'center', justifyContent: 'center' } });
