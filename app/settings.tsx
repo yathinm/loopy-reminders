@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import React, { useEffect, useState } from 'react';
-import { AccessibilityInfo, AppState, Linking, Pressable, StyleSheet, Switch, Text, useColorScheme, View } from 'react-native';
+import { AccessibilityInfo, Alert, AppState, Linking, Pressable, Share, StyleSheet, Switch, Text, useColorScheme, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { ensureNotificationPermission } from '@/services/notifications';
 import { colorsFor } from '@/theme/theme';
+import { useReminders } from '@/store/ReminderProvider';
 
 export default function SettingsScreen() {
   const colors = colorsFor(useColorScheme());
+  const { reminders, lists, deleteAllData } = useReminders();
   const [notificationStatus, setNotificationStatus] = useState<Notifications.PermissionStatus>(Notifications.PermissionStatus.UNDETERMINED);
   const [reduceMotion, setReduceMotion] = useState(false);
   async function refreshSettings() {
@@ -26,6 +28,15 @@ export default function SettingsScreen() {
   }
 
   const granted = notificationStatus === Notifications.PermissionStatus.GRANTED;
+  async function exportData() {
+    const data = { exportedAt: new Date().toISOString(), version: 1, lists, reminders: reminders.map(({ notificationId: _notificationId, ...item }) => item) };
+    await Share.share({ title: 'Loopy Reminders export', message: JSON.stringify(data, null, 2) });
+  }
+  function confirmDeleteAll() {
+    Alert.alert('Delete all reminder data?', 'This permanently deletes every reminder and custom list from this device.', [
+      { text: 'Cancel', style: 'cancel' }, { text: 'Delete Everything', style: 'destructive', onPress: () => void deleteAllData() },
+    ]);
+  }
   return <Screen>
     <View style={styles.masthead}><Text style={[styles.title, { color: colors.text }]}>Loopy settings</Text><Text style={[styles.subtitle, { color: colors.secondaryText }]}>Your reminder content stays on this device.</Text></View>
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -34,6 +45,7 @@ export default function SettingsScreen() {
       <Pressable onPress={() => void Linking.openSettings()} style={[styles.linkRow, { borderTopColor: colors.border }]}><Ionicons name="settings-outline" size={20} color={colors.accent} /><Text style={[styles.link, { color: colors.text }]}>Open iOS Settings</Text><Ionicons name="open-outline" size={17} color={colors.secondaryText} /></Pressable>
     </View>
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}><Row icon="shield-checkmark" label="Privacy" detail="No account, analytics, or cloud upload" colors={colors} /><Row icon="information-circle" label="Version" detail="1.0.0" colors={colors} /></View>
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}><Pressable onPress={() => void exportData()} style={styles.linkRow}><Ionicons name="share-outline" size={20} color={colors.accent} /><Text style={[styles.link, { color: colors.text }]}>Export reminder data</Text><Ionicons name="chevron-forward" size={17} color={colors.secondaryText} /></Pressable><Pressable onPress={confirmDeleteAll} style={[styles.linkRow, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}><Ionicons name="trash-outline" size={20} color={colors.danger} /><Text style={[styles.link, { color: colors.danger }]}>Delete all data</Text></Pressable></View>
   </Screen>;
 }
 

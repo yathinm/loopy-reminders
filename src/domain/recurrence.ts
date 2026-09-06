@@ -59,7 +59,7 @@ export function advanceRule(rule: RecurrenceRule): RecurrenceRule {
 
 export function recurrenceLabel(rule: RecurrenceRule | null): string {
   if (!rule) return 'Never';
-  const frequency = rule.interval === 1 ? rule.frequency.slice(0, -2) : `${rule.interval} ${rule.frequency}`;
-  return `Every ${frequency}`;
+  const units: Record<RecurrenceRule['frequency'], string> = { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' };
+  const unit = units[rule.frequency];
+  return rule.interval === 1 ? `Every ${unit}` : `Every ${rule.interval} ${unit}s`;
 }
-

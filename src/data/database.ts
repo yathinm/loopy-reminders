@@ -60,10 +60,12 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
   await db.runAsync(
     `INSERT OR IGNORE INTO lists
       (id, name, color, symbol, sort_order, is_inbox, created_at, updated_at)
-      VALUES (?, 'Inbox', '#E78FA2', 'tray', 0, 1, ?, ?)`,
+      VALUES (?, 'Inbox', '#C97882', 'tray', 0, 1, ?, ?)`,
     INBOX_ID, now, now,
   );
   await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (1)');
+  await db.runAsync("UPDATE lists SET color = '#C97882', updated_at = ? WHERE id = ? AND is_inbox = 1 AND color <> '#C97882'", now, INBOX_ID);
+  await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (2)');
 }
 
 type ListRow = {
@@ -101,10 +103,21 @@ export async function fetchReminders(db: SQLiteDatabase): Promise<Reminder[]> {
     isCompleted: Boolean(row.is_completed), completedAt: row.completed_at,
     priority: row.priority as Reminder['priority'], isFlagged: Boolean(row.is_flagged),
     sortOrder: row.sort_order, listId: row.list_id,
-    recurrence: row.recurrence_json ? JSON.parse(row.recurrence_json) : null,
+    recurrence: parseRecurrence(row.recurrence_json),
     seriesId: row.series_id, notificationId: row.notification_id,
     snoozedUntil: row.snoozed_until, tags: tags.get(row.id) ?? [],
   }));
+}
+
+function parseRecurrence(value: string | null): Reminder['recurrence'] {
+  if (!value) return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== 'object') return null;
+    const candidate = parsed as { frequency?: unknown; interval?: unknown };
+    if (!['daily', 'weekly', 'monthly', 'yearly'].includes(String(candidate.frequency)) || typeof candidate.interval !== 'number' || candidate.interval < 1) return null;
+    return parsed as Reminder['recurrence'];
+  } catch { return null; }
 }
 
 export async function fetchTags(db: SQLiteDatabase): Promise<ReminderTag[]> {

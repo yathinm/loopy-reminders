@@ -23,6 +23,7 @@ type ReminderContextValue = {
   updateList: (id: string, name: string, color: string, symbol: string) => Promise<void>;
   deleteList: (id: string) => Promise<void>;
   completeOnboarding: () => Promise<void>;
+  deleteAllData: () => Promise<void>;
 };
 
 const ReminderContext = createContext<ReminderContextValue | null>(null);
@@ -104,7 +105,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
     const saved = (await fetchReminders(db)).find((item) => item.id === id)!;
     await cancelReminderNotification(existing?.notificationId ?? null);
-    const notificationId = await scheduleReminderNotification(saved);
+    const notificationId = await scheduleReminderNotification(saved).catch(() => null);
     await updateNotificationId(id, notificationId);
     await refresh();
     return id;
@@ -186,7 +187,18 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     setOnboardingComplete(true);
   }, [db]);
 
-  const value = useMemo(() => ({ reminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, toggleReminder, createList, updateList, deleteList, completeOnboarding }), [reminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, toggleReminder, createList, updateList, deleteList, completeOnboarding]);
+  const deleteAllData = useCallback(async () => {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    await db.withTransactionAsync(async () => {
+      await db.runAsync('DELETE FROM reminder_tags');
+      await db.runAsync('DELETE FROM reminders');
+      await db.runAsync('DELETE FROM tags');
+      await db.runAsync('DELETE FROM lists WHERE is_inbox=0');
+    });
+    await refresh();
+  }, [db, refresh]);
+
+  const value = useMemo(() => ({ reminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, toggleReminder, createList, updateList, deleteList, completeOnboarding, deleteAllData }), [reminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, toggleReminder, createList, updateList, deleteList, completeOnboarding, deleteAllData]);
   return <ReminderContext.Provider value={value}>{children}</ReminderContext.Provider>;
 }
 

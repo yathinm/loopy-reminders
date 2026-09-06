@@ -29,7 +29,7 @@ describe('recurrence', () => {
 
   test('decrements finite occurrence count', () => {
     expect(advanceRule({ frequency: 'daily', interval: 1, remainingOccurrences: 3 }).remainingOccurrences).toBe(2);
-    expect(recurrenceLabel({ frequency: 'weekly', interval: 2 })).toBe('Every 2 weekly');
+    expect(recurrenceLabel({ frequency: 'weekly', interval: 2 })).toBe('Every 2 weeks');
+    expect(recurrenceLabel({ frequency: 'daily', interval: 1 })).toBe('Every day');
   });
 });
-

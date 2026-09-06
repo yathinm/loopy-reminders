@@ -32,6 +32,10 @@ export async function configureNotifications(): Promise<void> {
 export async function ensureNotificationPermission(): Promise<boolean> {
   let permissions = await Notifications.getPermissionsAsync();
   if (permissions.status === 'undetermined') permissions = await Notifications.requestPermissionsAsync();
+  return isAllowed(permissions);
+}
+
+function isAllowed(permissions: Notifications.NotificationPermissionsStatus): boolean {
   return permissions.granted || permissions.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
 }
 
@@ -44,7 +48,7 @@ export async function scheduleReminderNotification(reminder: Reminder, requestPe
   if (!reminder.dueAt || !reminder.hasTime || reminder.isCompleted) return null;
   const date = new Date(reminder.dueAt);
   if (date.getTime() <= Date.now()) return null;
-  const allowed = requestPermission ? await ensureNotificationPermission() : (await Notifications.getPermissionsAsync()).granted;
+  const allowed = requestPermission ? await ensureNotificationPermission() : isAllowed(await Notifications.getPermissionsAsync());
   if (!allowed) return null;
 
   return Notifications.scheduleNotificationAsync({
@@ -72,4 +76,3 @@ export async function snoozeNotification(reminder: Reminder, minutes = 10): Prom
     },
   });
 }
-

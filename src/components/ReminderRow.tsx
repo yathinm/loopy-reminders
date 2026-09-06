@@ -12,7 +12,7 @@ export function ReminderRow({ reminder, onToggle, onPress }: { reminder: Reminde
   return (
     <View style={[styles.container, { borderBottomColor: colors.border }]}>
       <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: reminder.isCompleted }} accessibilityLabel={`Mark ${reminder.title} ${reminder.isCompleted ? 'incomplete' : 'complete'}`} hitSlop={10} onPress={onToggle} style={[styles.check, { borderColor: reminder.priority ? colors.warning : colors.brand, backgroundColor: reminder.isCompleted ? colors.brand : 'transparent' }]}>
-        {reminder.isCompleted && <Ionicons name="checkmark" size={17} color="white" />}
+        {reminder.isCompleted && <Ionicons name="checkmark" size={17} color={colors.onColor} />}
       </Pressable>
       <Pressable accessibilityRole="button" onPress={onPress} style={styles.body}>
         <View style={styles.titleLine}>
