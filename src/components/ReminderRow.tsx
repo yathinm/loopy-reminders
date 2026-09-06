@@ -5,15 +5,16 @@ import { Reminder } from '@/domain/types';
 import { colorsFor, spacing } from '@/theme/theme';
 
 export function ReminderRow({ reminder, onToggle, onPress, onFlag, onDelete }: { reminder: Reminder; onToggle: () => void; onPress: () => void; onFlag?: () => void; onDelete?: () => void }) {
-  const colors = colorsFor(useColorScheme()); const [renderedAt] = useState(() => Date.now()); const [open, setOpen] = useState(false); const offset = useRef(new Animated.Value(0)).current;
+  const colors = colorsFor(useColorScheme()); const [renderedAt] = useState(() => Date.now()); const [open, setOpen] = useState(false); const openRef = useRef(false); const offset = useRef(new Animated.Value(0)).current;
+  const setOpenState = (value: boolean) => { openRef.current = value; setOpen(value); };
   const due = reminder.dueAt ? new Date(reminder.dueAt) : null; const overdue = due && !reminder.isCompleted && due.getTime() < renderedAt;
-  const close = () => Animated.spring(offset, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start(() => setOpen(false));
+  const close = () => Animated.spring(offset, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start(() => setOpenState(false));
   const panResponder = useRef(PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,
     onMoveShouldSetPanResponderCapture: (_, gesture) => Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,
     onPanResponderTerminationRequest: () => false,
-    onPanResponderMove: (_, gesture) => offset.setValue(Math.max(-210, Math.min(0, gesture.dx + (open ? -210 : 0)))),
-    onPanResponderRelease: (_, gesture) => { const shouldOpen = open ? gesture.dx <= -80 : gesture.dx < -80; Animated.spring(offset, { toValue: shouldOpen ? -210 : 0, useNativeDriver: true, bounciness: 0 }).start(() => setOpen(shouldOpen)); },
+    onPanResponderMove: (_, gesture) => offset.setValue(Math.max(-210, Math.min(0, gesture.dx + (openRef.current ? -210 : 0)))),
+    onPanResponderRelease: (_, gesture) => { const shouldOpen = openRef.current ? gesture.dx <= -80 : gesture.dx < -80; Animated.spring(offset, { toValue: shouldOpen ? -210 : 0, useNativeDriver: true, bounciness: 0 }).start(() => setOpenState(shouldOpen)); },
     onPanResponderTerminate: () => close(),
   })).current;
   return <View style={[styles.container, { borderBottomColor: colors.border, backgroundColor: colors.surface }]} {...panResponder.panHandlers}>
