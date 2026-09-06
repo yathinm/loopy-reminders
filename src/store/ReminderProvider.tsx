@@ -1,5 +1,6 @@
 import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { advanceRule, nextOccurrence } from '@/domain/recurrence';
@@ -30,6 +31,7 @@ type ReminderContextValue = {
 const ReminderContext = createContext<ReminderContextValue | null>(null);
 
 export function ReminderProvider({ children }: PropsWithChildren) {
+  const router = useRouter();
   const db = useSQLiteContext();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [deletedReminders, setDeletedReminders] = useState<Reminder[]>([]);
@@ -166,6 +168,10 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     void configureNotifications().then(reconcileNotifications).catch(() => undefined);
     const subscription = addNotificationResponseListener((actionIdentifier, reminderId) => {
+      if (actionIdentifier !== COMPLETE_ACTION && actionIdentifier !== SNOOZE_ACTION) {
+        router.push(`/reminder/${reminderId}`);
+        return;
+      }
       if (actionIdentifier === COMPLETE_ACTION) void toggleReminder(reminderId, true);
       if (actionIdentifier === SNOOZE_ACTION) {
         const reminder = reminders.find((item) => item.id === reminderId);
@@ -173,7 +179,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       }
     });
     return () => subscription.remove();
-  }, [reconcileNotifications, refresh, reminders, toggleReminder, updateNotificationId]);
+  }, [reconcileNotifications, refresh, reminders, router, toggleReminder, updateNotificationId]);
 
   const createList = useCallback(async (name: string, color: string, symbol: string) => {
     const id = Crypto.randomUUID(); const now = new Date().toISOString();
