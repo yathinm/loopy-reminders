@@ -5,7 +5,7 @@ import { Reminder } from '@/domain/types';
 import { colorsFor, spacing } from '@/theme/theme';
 
 export function ReminderRow({ reminder, onToggle, onPress, onFlag, onDelete }: { reminder: Reminder; onToggle: () => void; onPress: () => void; onFlag?: () => void; onDelete?: () => void }) {
-  const colors = colorsFor(useColorScheme()); const [renderedAt] = useState(() => Date.now()); const [open, setOpen] = useState(false); const openRef = useRef(false); const offset = useRef(new Animated.Value(0)).current;
+  const colors = colorsFor(useColorScheme()); const [renderedAt] = useState(() => Date.now()); const [, setOpen] = useState(false); const openRef = useRef(false); const offset = useRef(new Animated.Value(0)).current;
   const setOpenState = (value: boolean) => { openRef.current = value; setOpen(value); };
   const due = reminder.dueAt ? new Date(reminder.dueAt) : null; const overdue = due && !reminder.isCompleted && due.getTime() < renderedAt;
   const close = () => Animated.spring(offset, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start(() => setOpenState(false));
