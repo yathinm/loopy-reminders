@@ -37,7 +37,7 @@ export function ReminderEditor({ reminderId, initialListId }: { reminderId?: str
   }
 
   function confirmDelete() {
-    Alert.alert('Delete reminder?', 'This cannot be undone.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => void deleteReminder(reminderId!).then(() => router.back()) }]);
+    Alert.alert('Delete reminder?', 'This reminder will move to Recently Deleted.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => void deleteReminder(reminderId!).then(() => router.back()) }]);
   }
 
   function chooseQuickDate(days: number, hour = 9) {
