@@ -1,4 +1,4 @@
-import { ColorSchemeName } from 'react-native';
+import { ColorSchemeName, Platform } from 'react-native';
 
 export const palette = {
   dustyRose: '#C97882',
@@ -12,7 +12,7 @@ export const palette = {
 };
 
 export function colorsFor(scheme: ColorSchemeName) {
-  const dark = scheme === 'dark';
+  const dark = Platform.OS !== 'web' && scheme === 'dark';
   return {
     background: dark ? palette.nearBlack : palette.creamWhite,
     surface: dark ? palette.deepPlum : palette.blushPink,
