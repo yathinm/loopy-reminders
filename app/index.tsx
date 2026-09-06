@@ -7,7 +7,7 @@ import { Screen } from '@/components/Screen';
 import { filterSmartList } from '@/domain/filters';
 import { SmartList } from '@/domain/types';
 import { useReminders } from '@/store/ReminderProvider';
-import { colorsFor, palette, spacing } from '@/theme/theme';
+import { colorsFor, palette } from '@/theme/theme';
 
 const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
   { id: 'today', title: 'Today', icon: 'calendar', color: palette.dustyRose },
@@ -24,8 +24,13 @@ export default function HomeScreen() {
   return (
     <Screen>
       <WelcomeSheet visible={!onboardingComplete} onFinish={completeOnboarding} />
-      <View style={[styles.hero, { backgroundColor: colors.softBrand }]}>
-        <View style={styles.heroCopy}><Text style={[styles.greeting, { color: colors.text }]}>Hi, I’m Loopy!</Text><Text style={[styles.subheading, { color: colors.secondaryText }]}>{reminders.some((r) => !r.isCompleted) ? 'Let’s make today feel lighter.' : 'You’re all caught up. Nice work!'}</Text></View>
+      <View style={styles.toolbar}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Search reminders" onPress={() => router.push('/search')} style={[styles.searchButton, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Ionicons name="search" size={22} color={colors.accent} /><Text style={[styles.searchLabel, { color: colors.secondaryText }]}>Search</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Add reminder" onPress={() => router.push('/reminder/new')} style={({ pressed }) => [styles.quickAdd, { backgroundColor: colors.accent, opacity: pressed ? 0.78 : 1 }]}>
+          <Ionicons name="add" size={25} color={colors.onColor} />
+        </Pressable>
       </View>
       {error && <Text accessibilityRole="alert" style={[styles.error, { color: colors.danger, backgroundColor: colors.surface }]}>{error}</Text>}
       <View style={styles.smartGrid}>
@@ -48,19 +53,14 @@ export default function HomeScreen() {
           </Pressable>
         ))}
       </View>
-      <View style={styles.actions}>
-        <Pressable onPress={() => router.push('/search')} style={[styles.secondaryButton, { borderColor: colors.border, backgroundColor: colors.surface }]}><Ionicons name="search" size={19} color={colors.accent} /><Text style={[styles.buttonText, { color: colors.accent }]}>Search</Text></Pressable>
-        <Pressable onPress={() => router.push('/settings')} style={[styles.secondaryButton, { borderColor: colors.border, backgroundColor: colors.surface }]}><Ionicons name="settings-outline" size={19} color={colors.accent} /><Text style={[styles.buttonText, { color: colors.accent }]}>Settings</Text></Pressable>
-      </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="Add reminder" onPress={() => router.push('/reminder/new')} style={({ pressed }) => [styles.addButton, { backgroundColor: colors.accent, opacity: pressed ? 0.8 : 1 }]}><Ionicons name="add" size={24} color={colors.onColor} /><Text style={[styles.addText, { color: colors.onColor }]}>New Reminder</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Add reminder" onPress={() => router.push('/reminder/new')} style={({ pressed }) => [styles.fab, { backgroundColor: colors.accent, opacity: pressed ? 0.78 : 1 }]}><Ionicons name="add" size={28} color={colors.onColor} /></Pressable>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' }, hero: { borderRadius: 24, padding: 18, flexDirection: 'row', alignItems: 'center', minHeight: 126 }, heroCopy: { flex: 1 }, greeting: { fontSize: 25, fontWeight: '900' }, subheading: { fontSize: 15, lineHeight: 21, marginTop: 6 }, error: { padding: 12, borderRadius: 12, marginTop: 12 },
-  smartGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 18 }, smartCard: { width: '48%', flexGrow: 1, padding: 14, borderRadius: 17, borderWidth: StyleSheet.hairlineWidth }, iconCircle: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' }, count: { fontSize: 26, fontWeight: '800', position: 'absolute', right: 14, top: 14 }, cardTitle: { fontWeight: '700', marginTop: 10 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' }, toolbar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 }, searchButton: { flex: 1, height: 50, borderRadius: 25, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 17, gap: 10 }, searchLabel: { fontSize: 16, fontWeight: '600' }, quickAdd: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' }, error: { padding: 12, borderRadius: 12, marginTop: 12 },
+  smartGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, smartCard: { width: '48%', flexGrow: 1, minHeight: 126, padding: 14, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth }, iconCircle: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, count: { fontSize: 27, fontWeight: '800', position: 'absolute', right: 14, top: 14 }, cardTitle: { fontSize: 16, fontWeight: '700', marginTop: 18 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 26, marginBottom: 9 }, sectionTitle: { fontSize: 22, fontWeight: '800' }, listBox: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' }, listRow: { minHeight: 55, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 11 }, listIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, listName: { fontSize: 17, fontWeight: '600', flex: 1 },
-  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: 18 }, secondaryButton: { flex: 1, height: 46, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center' }, buttonText: { fontWeight: '700' },
-  addButton: { minHeight: 54, borderRadius: 17, marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }, addText: { fontSize: 17, fontWeight: '800' },
+  fab: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end', marginTop: 22 },
 });
