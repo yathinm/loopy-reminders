@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 import React from 'react';
-import { Alert, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { Screen } from '@/components/Screen';
 import { useReminders } from '@/store/ReminderProvider';
@@ -11,6 +11,10 @@ export default function RecentlyDeletedScreen() {
   const { deletedReminders, restoreReminder, permanentlyDeleteReminder } = useReminders();
 
   function confirmPermanentDelete(id: string, title: string) {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Delete “${title}” permanently? This cannot be undone.`)) void permanentlyDeleteReminder(id);
+      return;
+    }
     Alert.alert('Delete permanently?', '“' + title + '” cannot be recovered after this.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => void permanentlyDeleteReminder(id) },
@@ -18,6 +22,11 @@ export default function RecentlyDeletedScreen() {
   }
 
   function showActions(id: string, title: string) {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Restore “${title}”?\n\nChoose Cancel to leave it deleted.`)) void restoreReminder(id);
+      else if (window.confirm(`Delete “${title}” permanently? This cannot be undone.`)) void permanentlyDeleteReminder(id);
+      return;
+    }
     Alert.alert(title, 'Choose an action for this deleted reminder.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Restore', onPress: () => void restoreReminder(id) },

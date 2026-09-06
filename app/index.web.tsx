@@ -104,6 +104,10 @@ export default function DesktopHomeScreen() {
   }
 
   function confirmPermanentDelete(reminder: Reminder) {
+    if (typeof window !== 'undefined') {
+      if (window.confirm(`Delete “${reminder.title}” permanently? This cannot be undone.`)) void permanentlyDeleteReminder(reminder.id);
+      return;
+    }
     Alert.alert('Delete permanently?', `“${reminder.title}” cannot be recovered after this.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => void permanentlyDeleteReminder(reminder.id) },
