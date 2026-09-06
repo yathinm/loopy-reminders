@@ -51,7 +51,7 @@ export default function HomeScreen() {
           </Pressable>
         ))}
         <Pressable onPress={() => router.push('/recently-deleted')} style={[styles.listRow, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]} accessibilityRole="button" accessibilityLabel={`Recently Deleted, ${deletedReminders.length} reminders`}>
-          <View style={[styles.listIcon, { backgroundColor: colors.border }]}><Ionicons name="trash-outline" size={18} color={colors.secondaryText} /></View>
+          <View style={[styles.listIcon, { backgroundColor: colors.softBrand }]}><Ionicons name="trash-outline" size={18} color={colors.accent} /></View>
           <Text style={[styles.listName, { color: colors.text }]}>Recently Deleted</Text>
           <Text style={{ color: colors.secondaryText }}>{deletedReminders.length}</Text>
           <Ionicons name="chevron-forward" size={17} color={colors.secondaryText} />
