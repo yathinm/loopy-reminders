@@ -36,8 +36,15 @@ export function ReminderEditor({ reminderId, initialListId }: { reminderId?: str
     catch (reason) { Alert.alert('Could not save reminder', reason instanceof Error ? reason.message : 'Please try again.'); setSaving(false); }
   }
 
-  function confirmDelete() {
-    Alert.alert('Delete reminder?', 'This reminder will move to Recently Deleted.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => void deleteReminder(reminderId!).then(() => router.back()) }]);
+  async function confirmDelete() {
+    if (!reminderId) return;
+    if (Platform.OS === 'web') {
+      if (!window.confirm('Delete this reminder? It will move to Recently Deleted.')) return;
+      await deleteReminder(reminderId);
+      router.replace('/');
+      return;
+    }
+    Alert.alert('Delete reminder?', 'This reminder will move to Recently Deleted.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => void deleteReminder(reminderId).then(() => router.back()) }]);
   }
 
   function chooseQuickDate(days: number, hour = 9) {
@@ -70,7 +77,7 @@ export function ReminderEditor({ reminderId, initialListId }: { reminderId?: str
           <SettingRow icon="flag" label="Flagged" colors={colors}><ThemeSwitch value={flagged} onValueChange={setFlagged} colors={colors} /></SettingRow>
         </View>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text style={[styles.label, { color: colors.text }]}>Tags</Text><TextInput accessibilityLabel="Tags separated by commas" placeholder="school, errands, health" placeholderTextColor={colors.secondaryText} value={tags} onChangeText={setTags} autoCapitalize="none" style={[styles.tagInput, { color: colors.text, borderColor: colors.border }]} /><Text style={[styles.hint, { color: colors.secondaryText }]}>Separate tags with commas.</Text></View>
-        {reminderId && <Pressable onPress={confirmDelete} style={[styles.deleteButton, { borderColor: colors.danger }]}><Text style={{ color: colors.danger, fontWeight: '800' }}>Delete Reminder</Text></Pressable>}
+        {reminderId && <Pressable accessibilityRole="button" accessibilityLabel="Delete reminder" onPress={() => void confirmDelete()} style={({ pressed }) => [styles.deleteButton, { borderColor: colors.danger, opacity: pressed ? 0.7 : 1 }]}><Text style={{ color: colors.danger, fontWeight: '800' }}>Delete Reminder</Text></Pressable>}
       </ScrollView>
     </KeyboardAvoidingView>
   );
