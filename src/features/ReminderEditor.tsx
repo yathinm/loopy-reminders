@@ -41,7 +41,7 @@ export function ReminderEditor({ reminderId, initialListId }: { reminderId?: str
     if (Platform.OS === 'web') {
       if (!window.confirm('Delete this reminder? It will move to Recently Deleted.')) return;
       await deleteReminder(reminderId);
-      router.replace('/');
+      router.back();
       return;
     }
     Alert.alert('Delete reminder?', 'This reminder will move to Recently Deleted.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => void deleteReminder(reminderId).then(() => router.back()) }]);
