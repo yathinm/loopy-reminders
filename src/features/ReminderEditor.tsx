@@ -36,7 +36,7 @@ export function ReminderEditor({ reminderId, initialListId }: { reminderId?: str
     catch (reason) {
       const message = reason instanceof Error ? reason.message : 'Please try again.';
       const saved = message.startsWith('Reminder saved');
-      Alert.alert(saved ? 'Reminder saved' : 'Could not save reminder', message, saved ? [{ text: 'OK', onPress: () => router.back() }] : undefined);
+      Alert.alert(saved ? 'Reminder saved' : 'Could not save reminder', message, saved ? [{ text: 'Settings', onPress: () => router.push('/settings') }, { text: 'OK', onPress: () => router.back() }] : undefined);
       setSaving(false);
     }
   }
