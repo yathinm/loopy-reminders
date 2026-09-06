@@ -17,24 +17,28 @@ export default function RecentlyDeletedScreen() {
     ]);
   }
 
-  return <Screen backgroundColor={colors.softBrand}>
-    <Stack.Screen options={{ title: 'Recently Deleted', headerStyle: { backgroundColor: colors.softBrand }, headerTintColor: colors.accent, headerShadowVisible: false }} />
+  function showActions(id: string, title: string) {
+    Alert.alert(title, 'Choose an action for this deleted reminder.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Restore', onPress: () => void restoreReminder(id) },
+      { text: 'Delete Permanently', style: 'destructive', onPress: () => confirmPermanentDelete(id, title) },
+    ]);
+  }
+
+  return <Screen>
+    <Stack.Screen options={{ title: 'Recently Deleted' }} />
     <Text style={[styles.description, { color: colors.secondaryText }]}>Reminders are available here for 30 days. After that time, reminders will be permanently deleted.</Text>
     {deletedReminders.length === 0 ? <EmptyState title="Recently Deleted is empty" message="Deleted reminders will appear here." /> : (
       <View style={styles.rows}>
         {deletedReminders.map((reminder) => (
-          <View key={reminder.id} style={[styles.row, { borderBottomColor: colors.border }]}>
+          <Pressable key={reminder.id} onPress={() => showActions(reminder.id, reminder.title)} style={[styles.row, { backgroundColor: colors.softBrand, borderColor: colors.border }]} accessibilityRole="button" accessibilityLabel={reminder.title}>
             <View style={[styles.circle, { borderColor: colors.border }]} />
             <View style={styles.content}>
               <Text style={[styles.title, { color: colors.text }]}>{reminder.title}</Text>
               {reminder.dueAt && <Text style={[styles.due, { color: colors.danger }]}>{formatDate(reminder.dueAt, reminder.hasTime)}</Text>}
-              {!!reminder.notes && <Text style={[styles.notes, { color: colors.secondaryText }]} numberOfLines={2}>{reminder.notes}</Text>}
-              <View style={styles.actions}>
-                <Pressable accessibilityRole="button" onPress={() => void restoreReminder(reminder.id)} hitSlop={8}><Text style={[styles.action, { color: colors.accent }]}>Restore</Text></Pressable>
-                <Pressable accessibilityRole="button" onPress={() => confirmPermanentDelete(reminder.id, reminder.title)} hitSlop={8}><Text style={[styles.action, { color: colors.danger }]}>Delete</Text></Pressable>
-              </View>
+
             </View>
-          </View>
+          </Pressable>
         ))}
       </View>
     )}
@@ -50,12 +54,9 @@ function formatDate(value: string, hasTime: boolean) {
 const styles = StyleSheet.create({
   description: { fontSize: 18, lineHeight: 27, marginBottom: 30 },
   rows: { gap: 0 },
-  row: { flexDirection: 'row', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, gap: 14 },
+  row: { flexDirection: 'row', paddingVertical: 14, paddingHorizontal: 14, marginBottom: 12, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, gap: 14 },
   circle: { width: 25, height: 25, borderRadius: 13, borderWidth: 2, marginTop: 2 },
   content: { flex: 1, gap: 5 },
   title: { fontSize: 18, lineHeight: 23 },
   due: { fontSize: 17, lineHeight: 22 },
-  notes: { fontSize: 14, lineHeight: 20 },
-  actions: { flexDirection: 'row', gap: 20, marginTop: 4 },
-  action: { fontSize: 15, fontWeight: '800' },
 });
