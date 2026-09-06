@@ -21,7 +21,8 @@ type ReminderContextValue = {
   deleteReminder: (id: string) => Promise<void>;
   restoreReminder: (id: string) => Promise<void>;
   permanentlyDeleteReminder: (id: string) => Promise<void>;
-  toggleReminder: (id: string, completed?: boolean) => Promise<void>;
+ toggleReminder: (id: string, completed?: boolean) => Promise<void>;
+  toggleFlag: (id: string) => Promise<void>;
   createList: (name: string, color: string, symbol: string) => Promise<string>;
   updateList: (id: string, name: string, color: string, symbol: string) => Promise<void>;
   deleteList: (id: string) => Promise<void>;
@@ -160,7 +161,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     await cancelReminderNotification(item.notificationId);
     if (nextCompleted) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await refresh(); await reconcileNotifications(); await refresh();
-  }, [db, reconcileNotifications, refresh]);
+ }, [db, reconcileNotifications, refresh]);
+
+  const toggleFlag = useCallback(async (id: string) => {
+    await db.runAsync('UPDATE reminders SET is_flagged = CASE is_flagged WHEN 1 THEN 0 ELSE 1 END, updated_at=? WHERE id=?', new Date().toISOString(), id);
+    await refresh();
+  }, [db, refresh]);
 
   useEffect(() => {
     void configureNotifications().then(reconcileNotifications).catch(() => undefined);
@@ -212,7 +218,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     await refresh();
   }, [db, refresh]);
 
-  const value = useMemo(() => ({ reminders, deletedReminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, createList, updateList, deleteList, completeOnboarding, deleteAllData }), [reminders, deletedReminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, createList, updateList, deleteList, completeOnboarding, deleteAllData]);
+  const value = useMemo(() => ({ reminders, deletedReminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, completeOnboarding, deleteAllData }), [reminders, deletedReminders, lists, tags, loading, error, onboardingComplete, refresh, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, completeOnboarding, deleteAllData]);
   return <ReminderContext.Provider value={value}>{children}</ReminderContext.Provider>;
 }
 

@@ -15,7 +15,7 @@ const smartTitles: Record<SmartList, string> = { today: 'Today', scheduled: 'Sch
 export default function ListScreen() {
   const { id, smart } = useLocalSearchParams<{ id: string; smart?: string }>();
   const router = useRouter(); const colors = colorsFor(useColorScheme());
-  const { reminders, lists, toggleReminder, deleteList } = useReminders();
+  const { reminders, lists, toggleReminder, toggleFlag, deleteReminder, deleteList } = useReminders();
   const [showCompleted, setShowCompleted] = useState(id === 'completed');
   const [undoID, setUndoID] = useState<string | null>(null);
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function ListScreen() {
       <Stack.Screen options={{ title, headerRight: list && !list.isInbox ? () => <Pressable onPress={() => router.push({ pathname: '/list-editor', params: { id: list.id } })}><Text style={{ color: colors.accent, fontWeight: '700' }}>Edit</Text></Pressable> : undefined }} />
       {!smart && <Pressable accessibilityRole="switch" accessibilityState={{ checked: showCompleted }} onPress={() => setShowCompleted((value) => !value)} style={[styles.toggle, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text style={{ color: colors.text, flex: 1 }}>Show completed</Text><Ionicons name={showCompleted ? 'checkbox' : 'square-outline'} size={22} color={colors.accent} /></Pressable>}
       {items.length === 0 ? <EmptyState title={smart === 'completed' ? 'Nothing completed yet' : 'Nothing here yet'} /> : (
-        <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>{items.map((item) => <ReminderRow key={item.id} reminder={item} onToggle={() => void toggle(item.id, item.isCompleted)} onPress={() => router.push(`/reminder/${item.id}`)} />)}</View>
+        <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>{items.map((item) => <ReminderRow key={item.id} reminder={item} onToggle={() => void toggle(item.id, item.isCompleted)} onFlag={() => void toggleFlag(item.id)} onDelete={() => void deleteReminder(item.id)} onPress={() => router.push(`/reminder/${item.id}`)} />)}</View>
       )}
       {undoID && <View accessibilityLiveRegion="polite" style={[styles.undo, { backgroundColor: colors.accent }]}><Text style={{ color: colors.onColor, flex: 1 }}>Reminder completed</Text><Pressable accessibilityRole="button" accessibilityLabel="Undo completing reminder" onPress={() => { void toggleReminder(undoID, false); setUndoID(null); }}><Text style={{ color: colors.softBrand, fontWeight: '800' }}>Undo</Text></Pressable></View>}
       {list && !list.isInbox && <Pressable onPress={confirmRemoveList} style={styles.delete}><Text style={{ color: colors.danger, fontWeight: '700' }}>Delete List</Text><Text style={{ color: colors.secondaryText, fontSize: 12 }}>Reminders will move to Inbox.</Text></Pressable>}
