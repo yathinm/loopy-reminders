@@ -4,28 +4,25 @@ import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { advanceRule, nextOccurrence } from '@/domain/recurrence';
-import { Reminder, ReminderDraft, ReminderList, ReminderTag } from '@/domain/types';
-import { fetchLists, fetchReminders, fetchTags, INBOX_ID, removeOrphanedTags } from '@/data/database';
-import { addNotificationResponseListener, cancelAllReminderNotifications, cancelReminderNotification, COMPLETE_ACTION, configureNotifications, getScheduledNotificationIds, scheduleReminderNotification, snoozeNotification, SNOOZE_ACTION } from '@/services/notifications';
+import { Reminder, ReminderDraft, ReminderList } from '@/domain/types';
+import { fetchLists, fetchReminders, INBOX_ID, removeOrphanedTags } from '@/data/database';
+import { addNotificationResponseListener, cancelReminderNotification, COMPLETE_ACTION, configureNotifications, getScheduledNotificationIds, scheduleReminderNotification, snoozeNotification, SNOOZE_ACTION } from '@/services/notifications';
 
 type ReminderContextValue = {
   reminders: Reminder[];
   deletedReminders: Reminder[];
   lists: ReminderList[];
-  tags: ReminderTag[];
   loading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
   saveReminder: (draft: ReminderDraft, id?: string) => Promise<string>;
   deleteReminder: (id: string) => Promise<void>;
   restoreReminder: (id: string) => Promise<void>;
   permanentlyDeleteReminder: (id: string) => Promise<void>;
- toggleReminder: (id: string, completed?: boolean) => Promise<void>;
+  toggleReminder: (id: string, completed?: boolean) => Promise<void>;
   toggleFlag: (id: string) => Promise<void>;
   createList: (name: string, color: string, symbol: string) => Promise<string>;
   updateList: (id: string, name: string, color: string, symbol: string) => Promise<void>;
   deleteList: (id: string) => Promise<void>;
-  deleteAllData: () => Promise<void>;
 };
 
 const ReminderContext = createContext<ReminderContextValue | null>(null);
@@ -36,7 +33,6 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [deletedReminders, setDeletedReminders] = useState<Reminder[]>([]);
   const [lists, setLists] = useState<ReminderList[]>([]);
-  const [tags, setTags] = useState<ReminderTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,10 +40,10 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     try {
       await db.runAsync("DELETE FROM reminders WHERE deleted_at IS NOT NULL AND deleted_at <= datetime('now', '-30 days')");
       await removeOrphanedTags(db);
-      const [nextReminders, nextDeletedReminders, nextLists, nextTags] = await Promise.all([
-        fetchReminders(db), fetchReminders(db, true), fetchLists(db), fetchTags(db),
+      const [nextReminders, nextDeletedReminders, nextLists] = await Promise.all([
+        fetchReminders(db), fetchReminders(db, true), fetchLists(db),
       ]);
-      setReminders(nextReminders); setDeletedReminders(nextDeletedReminders); setLists(nextLists); setTags(nextTags); setError(null);
+      setReminders(nextReminders); setDeletedReminders(nextDeletedReminders); setLists(nextLists); setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to load reminders.');
     } finally { setLoading(false); }
@@ -86,13 +82,13 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
     await db.withTransactionAsync(async () => {
       await db.runAsync(
-        `INSERT INTO reminders (id,title,notes,created_at,updated_at,due_at,has_time,is_completed,completed_at,priority,is_flagged,sort_order,list_id,recurrence_json,series_id,notification_id,snoozed_until)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `INSERT INTO reminders (id,title,notes,created_at,updated_at,due_at,has_time,is_completed,completed_at,priority,is_flagged,sort_order,list_id,recurrence_json,series_id,notification_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(id) DO UPDATE SET title=excluded.title,notes=excluded.notes,updated_at=excluded.updated_at,due_at=excluded.due_at,has_time=excluded.has_time,priority=excluded.priority,is_flagged=excluded.is_flagged,list_id=excluded.list_id,recurrence_json=excluded.recurrence_json,series_id=excluded.series_id`,
         id, title, draft.notes.trim(), existing?.createdAt ?? now, now, dueAt, draft.hasTime ? 1 : 0,
         existing?.isCompleted ? 1 : 0, existing?.completedAt ?? null, draft.priority, draft.isFlagged ? 1 : 0,
         existing?.sortOrder ?? Date.now(), draft.listId || INBOX_ID, draft.recurrence ? JSON.stringify(draft.recurrence) : null,
-        seriesId, existing?.notificationId ?? null, existing?.snoozedUntil ?? null,
+        seriesId, existing?.notificationId ?? null,
       );
       await db.runAsync('DELETE FROM reminder_tags WHERE reminder_id = ?', id);
       for (const rawName of [...new Set(draft.tagNames.map((name) => name.trim()).filter(Boolean))]) {
@@ -178,7 +174,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     });
     await cancelReminderNotification(item.notificationId);
     if (nextCompleted) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await refresh(); await reconcileNotifications(); await refresh();
+    await reconcileNotifications(); await refresh();
  }, [db, reconcileNotifications, refresh]);
 
   const toggleFlag = useCallback(async (id: string) => {
@@ -222,18 +218,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     await refresh();
   }, [db, refresh]);
 
-  const deleteAllData = useCallback(async () => {
-    await cancelAllReminderNotifications();
-    await db.withTransactionAsync(async () => {
-      await db.runAsync('DELETE FROM reminder_tags');
-      await db.runAsync('DELETE FROM reminders');
-      await db.runAsync('DELETE FROM tags');
-      await db.runAsync('DELETE FROM lists WHERE is_inbox=0');
-    });
-    await refresh();
-  }, [db, refresh]);
-
-  const value = useMemo(() => ({ reminders, deletedReminders, lists, tags, loading, error, refresh, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, deleteAllData }), [reminders, deletedReminders, lists, tags, loading, error, refresh, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, deleteAllData]);
+  const value = useMemo(() => ({ reminders, deletedReminders, lists, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList }), [reminders, deletedReminders, lists, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList]);
   return <ReminderContext.Provider value={value}>{children}</ReminderContext.Provider>;
 }
 

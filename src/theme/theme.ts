@@ -22,11 +22,10 @@ export function colorsFor(scheme: ColorSchemeName) {
     accent: dark ? palette.softPink : palette.deepPlum,
     brand: palette.dustyRose,
     softBrand: dark ? palette.deepPlum : palette.blushPink,
-    success: palette.dustyRose,
     warning: palette.warmCoral,
     danger: palette.warmCoral,
     onColor: palette.creamWhite,
   };
 }
 
-export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
+export const spacing = { md: 12, lg: 16 } as const;

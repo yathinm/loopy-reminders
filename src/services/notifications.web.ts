@@ -1,6 +1,5 @@
 import { Reminder } from '@/domain/types';
 
-export const REMINDER_CATEGORY = 'REMINDER_DUE';
 export const COMPLETE_ACTION = 'COMPLETE_REMINDER';
 export const SNOOZE_ACTION = 'SNOOZE_REMINDER';
 
@@ -29,10 +28,6 @@ export function addNotificationResponseListener(listener: (actionIdentifier: str
 
 export async function cancelReminderNotification(notificationId: string | null): Promise<void> {
   if (notificationId) await notifications()?.cancel(notificationId);
-}
-
-export async function cancelAllReminderNotifications(): Promise<void> {
-  await notifications()?.cancelAll();
 }
 
 export async function scheduleReminderNotification(reminder: Reminder): Promise<string | null> {

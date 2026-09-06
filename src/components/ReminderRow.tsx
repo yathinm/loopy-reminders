@@ -1,16 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Alert, Animated, PanResponder, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { Reminder } from '@/domain/types';
 import { colorsFor, spacing } from '@/theme/theme';
 
 export function ReminderRow({ reminder, onToggle, onPress, onFlag, onDelete }: { reminder: Reminder; onToggle: () => void; onPress: () => void; onFlag?: () => void; onDelete?: () => void }) {
-  const colors = colorsFor(useColorScheme()); const [renderedAt] = useState(() => Date.now()); const [, setOpen] = useState(false); const openRef = useRef(false); const offset = useRef(new Animated.Value(0)).current;
-  const setOpenState = (value: boolean) => { openRef.current = value; setOpen(value); };
-  const due = reminder.dueAt ? new Date(reminder.dueAt) : null; const overdue = due && !reminder.isCompleted && due.getTime() < renderedAt;
+  const colors = colorsFor(useColorScheme()); const openRef = useRef(false); const offset = useRef(new Animated.Value(0)).current;
+  const setOpenState = (value: boolean) => { openRef.current = value; };
+  const due = reminder.dueAt ? new Date(reminder.dueAt) : null; const overdue = due && !reminder.isCompleted && due.getTime() < Date.now();
   const close = () => Animated.spring(offset, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start(() => setOpenState(false));
-  useFocusEffect(useCallback(() => { openRef.current = false; offset.setValue(0); setOpen(false); }, [offset]));
+  useFocusEffect(useCallback(() => { openRef.current = false; offset.setValue(0); }, [offset]));
   const panResponder = useRef(PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,
     onMoveShouldSetPanResponderCapture: (_, gesture) => Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,

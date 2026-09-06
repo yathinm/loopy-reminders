@@ -19,6 +19,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --legacy-peer-deps
+      - run: npm ci
       - run: npm run validate
       - run: npx expo export --platform ios --output-dir dist

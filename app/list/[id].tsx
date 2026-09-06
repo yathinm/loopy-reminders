@@ -17,12 +17,12 @@ export default function ListScreen() {
   const router = useRouter(); const colors = colorsFor(useColorScheme());
   const { reminders, lists, toggleReminder, toggleFlag, deleteReminder, deleteList } = useReminders();
   const [showCompleted, setShowCompleted] = useState(id === 'completed');
-  const [undoID, setUndoID] = useState<string | null>(null);
+  const [undoId, setUndoId] = useState<string | null>(null);
   useEffect(() => {
-    if (!undoID) return;
-    const timeout = setTimeout(() => setUndoID(null), 4000);
+    if (!undoId) return;
+    const timeout = setTimeout(() => setUndoId(null), 4000);
     return () => clearTimeout(timeout);
-  }, [undoID]);
+  }, [undoId]);
   const list = lists.find((item) => item.id === id);
   const title = smart ? smartTitles[id as SmartList] ?? 'Reminders' : list?.name ?? 'Reminders';
   const items = useMemo(() => {
@@ -44,7 +44,7 @@ export default function ListScreen() {
 
   async function toggle(id: string, wasCompleted: boolean) {
     await toggleReminder(id);
-    setUndoID(wasCompleted ? null : id);
+    setUndoId(wasCompleted ? null : id);
   }
 
   return (
@@ -54,7 +54,7 @@ export default function ListScreen() {
       {items.length === 0 ? <EmptyState title={smart === 'completed' ? 'Nothing completed yet' : 'Nothing here yet'} /> : (
         <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>{items.map((item) => <ReminderRow key={item.id} reminder={item} onToggle={() => void toggle(item.id, item.isCompleted)} onFlag={() => void toggleFlag(item.id)} onDelete={() => void deleteReminder(item.id)} onPress={() => router.push(`/reminder/${item.id}`)} />)}</View>
       )}
-      {undoID && <View accessibilityLiveRegion="polite" style={[styles.undo, { backgroundColor: colors.accent }]}><Text style={{ color: colors.onColor, flex: 1 }}>Reminder completed</Text><Pressable accessibilityRole="button" accessibilityLabel="Undo completing reminder" onPress={() => { void toggleReminder(undoID, false); setUndoID(null); }}><Text style={{ color: colors.softBrand, fontWeight: '800' }}>Undo</Text></Pressable></View>}
+      {undoId && <View accessibilityLiveRegion="polite" style={[styles.undo, { backgroundColor: colors.accent }]}><Text style={{ color: colors.onColor, flex: 1 }}>Reminder completed</Text><Pressable accessibilityRole="button" accessibilityLabel="Undo completing reminder" onPress={() => { void toggleReminder(undoId, false); setUndoId(null); }}><Text style={{ color: colors.softBrand, fontWeight: '800' }}>Undo</Text></Pressable></View>}
       {list && !list.isInbox && <Pressable onPress={confirmRemoveList} style={styles.delete}><Text style={{ color: colors.danger, fontWeight: '700' }}>Delete List</Text><Text style={{ color: colors.secondaryText, fontSize: 12 }}>Reminders will move to Inbox.</Text></Pressable>}
       {id !== 'completed' && <Pressable onPress={() => router.push({ pathname: '/reminder/new', params: { listId: smart ? undefined : id } })} style={[styles.add, { backgroundColor: colors.accent }]}><Ionicons name="add" size={22} color={colors.onColor} /><Text style={[styles.addText, { color: colors.onColor }]}>New Reminder</Text></Pressable>}
     </Screen>

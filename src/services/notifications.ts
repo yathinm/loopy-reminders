@@ -2,7 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Reminder } from '@/domain/types';
 
-export const REMINDER_CATEGORY = 'REMINDER_DUE';
+const REMINDER_CATEGORY = 'REMINDER_DUE';
 export const COMPLETE_ACTION = 'COMPLETE_REMINDER';
 export const SNOOZE_ACTION = 'SNOOZE_REMINDER';
 
@@ -58,10 +58,6 @@ export function addNotificationResponseListener(listener: (actionIdentifier: str
     const reminderId = response.notification.request.content.data?.reminderId;
     if (typeof reminderId === 'string') listener(response.actionIdentifier, reminderId);
   });
-}
-
-export async function cancelAllReminderNotifications(): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
 export async function scheduleReminderNotification(reminder: Reminder, requestPermission = true): Promise<string | null> {

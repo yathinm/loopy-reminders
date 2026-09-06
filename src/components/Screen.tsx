@@ -1,15 +1,14 @@
 import React, { PropsWithChildren } from 'react';
-import { ScrollView, StyleProp, StyleSheet, useColorScheme, ViewStyle } from 'react-native';
+import { ScrollView, StyleSheet, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colorsFor } from '@/theme/theme';
 
-export function Screen({ children, scroll = true, contentStyle, backgroundColor }: PropsWithChildren<{ scroll?: boolean; contentStyle?: StyleProp<ViewStyle>; backgroundColor?: string }>) {
+export function Screen({ children, scroll = true }: PropsWithChildren<{ scroll?: boolean }>) {
   const colors = colorsFor(useColorScheme());
-  const surfaceColor = backgroundColor ?? colors.background;
-  if (!scroll) return <SafeAreaView edges={['bottom']} style={[styles.safe, { backgroundColor: surfaceColor }, contentStyle]}>{children}</SafeAreaView>;
+  if (!scroll) return <SafeAreaView edges={['bottom']} style={[styles.safe, { backgroundColor: colors.background }]}>{children}</SafeAreaView>;
   return (
-    <SafeAreaView edges={['bottom']} style={[styles.safe, { backgroundColor: surfaceColor }]}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { backgroundColor: surfaceColor }, contentStyle]}>{children}</ScrollView>
+    <SafeAreaView edges={['bottom']} style={[styles.safe, { backgroundColor: colors.background }]}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { backgroundColor: colors.background }]}>{children}</ScrollView>
     </SafeAreaView>
   );
 }

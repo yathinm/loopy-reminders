@@ -24,6 +24,13 @@ export function filterSmartList(reminders: Reminder[], smart: SmartList, now = n
   });
 }
 
+export function matchesReminderQuery(reminder: Reminder, query: string): boolean {
+  const needle = query.trim().toLocaleLowerCase();
+  if (!needle) return false;
+  return [reminder.title, reminder.notes, ...reminder.tags.map((tag) => tag.name)]
+    .some((value) => value.toLocaleLowerCase().includes(needle));
+}
+
 export function sortReminders(reminders: Reminder[]): Reminder[] {
   return [...reminders].sort((a, b) => {
     if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;

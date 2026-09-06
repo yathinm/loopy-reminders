@@ -5,7 +5,7 @@ import { StyleSheet, TextInput, useColorScheme, View } from 'react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { ReminderRow } from '@/components/ReminderRow';
 import { Screen } from '@/components/Screen';
-import { sortReminders } from '@/domain/filters';
+import { matchesReminderQuery, sortReminders } from '@/domain/filters';
 import { useReminders } from '@/store/ReminderProvider';
 import { colorsFor } from '@/theme/theme';
 
@@ -14,7 +14,7 @@ export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const results = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase(); if (!needle) return [];
-    return sortReminders(reminders.filter((item) => [item.title, item.notes, ...item.tags.map((tag) => tag.name)].some((value) => value.toLocaleLowerCase().includes(needle))));
+    return sortReminders(reminders.filter((item) => matchesReminderQuery(item, needle)));
   }, [query, reminders]);
   return <Screen>
     <View style={[styles.search, { backgroundColor: colors.surface, borderColor: colors.border }]}><Ionicons name="search" size={19} color={colors.secondaryText} /><TextInput autoFocus accessibilityLabel="Search reminders" value={query} onChangeText={setQuery} clearButtonMode="while-editing" placeholder="Titles, notes, and tags" placeholderTextColor={colors.secondaryText} style={[styles.input, { color: colors.text }]} /></View>

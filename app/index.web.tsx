@@ -1,17 +1,52 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { ReminderRow } from '@/components/ReminderRow';
-import { filterSmartList, sortReminders } from '@/domain/filters';
-import { Reminder, SmartList } from '@/domain/types';
+import { filterSmartList, matchesReminderQuery, sortReminders } from '@/domain/filters';
+import { Reminder, ReminderList, SmartList } from '@/domain/types';
 import { useReminders } from '@/store/ReminderProvider';
 import { colorsFor, palette } from '@/theme/theme';
 
 type Selection = { kind: 'smart'; id: SmartList } | { kind: 'list'; id: string } | { kind: 'deleted' };
 type ContextMenuState = { listId: string; x: number; y: number } | null;
 type SortMode = 'due' | 'title' | 'manual';
+type Colors = ReturnType<typeof colorsFor>;
+type PointerCoordinates = { pageX?: number; pageY?: number; clientX?: number; clientY?: number };
+type WebContextMenuEvent = PointerCoordinates & {
+  preventDefault?: () => void;
+  nativeEvent?: PointerCoordinates;
+};
+
+type DesktopContextMenuProps = {
+  list?: ReminderList;
+  x: number;
+  y: number;
+  colors: Colors;
+  submenu: 'sort' | null;
+  isPinned: boolean;
+  showingCompleted: boolean;
+  sortMode: SortMode;
+  onClose: () => void;
+  onSubmenu: (submenu: 'sort' | null) => void;
+  onPin: () => void;
+  onCompleted: () => void;
+  onOpenWindow: () => void;
+  onSort: (mode: SortMode) => void;
+  onRename: () => void;
+  onDelete: () => void;
+};
+
+type MenuItemProps = {
+  label: string;
+  colors: Colors;
+  onPress: () => void;
+  arrow?: boolean;
+  shortcut?: string;
+  selected?: boolean;
+  disabled?: boolean;
+};
 
 function readDesktopStorage<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -19,7 +54,7 @@ function readDesktopStorage<T>(key: string, fallback: T): T {
 }
 
 function writeDesktopStorage(key: string, value: unknown) {
-  try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage is optional */ }
+  try { window.localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 
 const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
@@ -58,7 +93,7 @@ export default function DesktopHomeScreen() {
   const visibleReminders = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     if (needle) {
-      return sortDesktopReminders(reminders.filter((item) => [item.title, item.notes, ...item.tags.map((tag) => tag.name)].some((value) => value.toLocaleLowerCase().includes(needle))), sortMode);
+      return sortDesktopReminders(reminders.filter((item) => matchesReminderQuery(item, needle)), sortMode);
     }
     if (selection.kind === 'smart') return sortReminders(filterSmartList(reminders, selection.id));
     if (selection.kind === 'list') return sortDesktopReminders(reminders.filter((item) => item.listId === selection.id && (showCompletedLists.includes(selection.id) || !item.isCompleted)), sortMode);
@@ -83,7 +118,7 @@ export default function DesktopHomeScreen() {
     setSubmenu(null);
   }
 
-  function openContextMenu(event: any, listId: string) {
+  function openContextMenu(event: WebContextMenuEvent, listId: string) {
     event.preventDefault?.();
     const native = event.nativeEvent ?? event;
     setContextMenu({ listId, x: native.pageX ?? native.clientX ?? 160, y: native.pageY ?? native.clientY ?? 160 });
@@ -94,9 +129,7 @@ export default function DesktopHomeScreen() {
 
   async function deleteSelectedList(listId: string) {
     const list = lists.find((item) => item.id === listId); if (!list || list.isInbox) return;
-    const confirmed = typeof window !== 'undefined'
-      ? window.confirm(`Delete “${list.name}”? Its reminders will move to Reminders.`)
-      : true;
+    const confirmed = window.confirm(`Delete “${list.name}”? Its reminders will move to Reminders.`);
     closeContextMenu();
     if (!confirmed) return;
     await deleteList(listId);
@@ -104,14 +137,7 @@ export default function DesktopHomeScreen() {
   }
 
   function confirmPermanentDelete(reminder: Reminder) {
-    if (typeof window !== 'undefined') {
-      if (window.confirm(`Delete “${reminder.title}” permanently? This cannot be undone.`)) void permanentlyDeleteReminder(reminder.id);
-      return;
-    }
-    Alert.alert('Delete permanently?', `“${reminder.title}” cannot be recovered after this.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => void permanentlyDeleteReminder(reminder.id) },
-    ]);
+    if (window.confirm(`Delete “${reminder.title}” permanently? This cannot be undone.`)) void permanentlyDeleteReminder(reminder.id);
   }
 
   return (
@@ -158,7 +184,7 @@ export default function DesktopHomeScreen() {
             {orderedLists.map((list) => {
               const selected = !query.trim() && selection.kind === 'list' && selection.id === list.id;
               return (
-                <Pressable key={list.id} onPress={() => choose({ kind: 'list', id: list.id })} {...({ onContextMenu: (event: any) => openContextMenu(event, list.id) } as any)} style={[styles.navRow, selected && { backgroundColor: colors.background }]}>
+                <Pressable key={list.id} onPress={() => choose({ kind: 'list', id: list.id })} {...({ onContextMenu: (event: WebContextMenuEvent) => openContextMenu(event, list.id) } as Record<string, unknown>)} style={[styles.navRow, selected && { backgroundColor: colors.background }]}>
                   <View style={[styles.navIcon, { backgroundColor: list.color }]}><Ionicons name={list.symbol as keyof typeof Ionicons.glyphMap} size={17} color={colors.onColor} /></View>
                   <Text numberOfLines={1} style={[styles.navLabel, { color: colors.text }]}>{list.name}</Text>
                   <Text style={{ color: colors.secondaryText }}>{reminders.filter((item) => item.listId === list.id && (showCompletedLists.includes(list.id) || !item.isCompleted)).length}</Text>
@@ -214,7 +240,7 @@ export default function DesktopHomeScreen() {
         </ScrollView>
       </View>
       {contextMenu && <DesktopContextMenu
-        list={lists.find((list) => list.id === contextMenu.listId)!}
+        list={lists.find((list) => list.id === contextMenu.listId)}
         x={contextMenu.x}
         y={contextMenu.y}
         colors={colors}
@@ -235,7 +261,7 @@ export default function DesktopHomeScreen() {
   );
 }
 
-function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingCompleted, sortMode, onClose, onSubmenu, onPin, onCompleted, onOpenWindow, onSort, onRename, onDelete }: any) {
+function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingCompleted, sortMode, onClose, onSubmenu, onPin, onCompleted, onOpenWindow, onSort, onRename, onDelete }: DesktopContextMenuProps) {
   if (!list) return null;
   const left = Math.max(8, Math.min(x, (typeof window !== 'undefined' ? window.innerWidth : 900) - 300));
   const top = Math.max(8, Math.min(y, (typeof window !== 'undefined' ? window.innerHeight : 700) - 510));
@@ -260,7 +286,7 @@ function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingComp
   </>;
 }
 
-function MenuItem({ label, colors, onPress, arrow, shortcut, selected, disabled }: any) {
+function MenuItem({ label, colors, onPress, arrow, shortcut, selected, disabled }: MenuItemProps) {
   return <Pressable disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.menuItem, { opacity: disabled ? 0.4 : pressed ? 0.65 : 1 }]}>
     <Text style={[styles.menuLabel, { color: colors.text }]}>{selected ? '✓ ' : ''}{label}</Text>
     {shortcut && <Text style={[styles.menuShortcut, { color: colors.secondaryText }]}>{shortcut}</Text>}

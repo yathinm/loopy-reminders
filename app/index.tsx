@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { filterSmartList } from '@/domain/filters';
 import { SmartList } from '@/domain/types';
@@ -18,8 +18,7 @@ const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.gl
 
 export default function HomeScreen() {
   const router = useRouter(); const colors = colorsFor(useColorScheme());
-  const { reminders, deletedReminders, lists, loading, error } = useReminders();
-  if (loading) return <View style={[styles.center, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.accent} /></View>;
+  const { reminders, deletedReminders, lists, error } = useReminders();
   return (
     <Screen scroll={false}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -62,7 +61,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' }, content: { padding: 16, paddingBottom: 110 }, toolbar: { width: '100%', marginBottom: 16 }, searchButton: { width: '100%', height: 50, borderRadius: 25, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 17, gap: 10 }, searchLabel: { fontSize: 16, fontWeight: '600' }, error: { padding: 12, borderRadius: 12, marginTop: 12 },
+  content: { padding: 16, paddingBottom: 110 }, toolbar: { width: '100%', marginBottom: 16 }, searchButton: { width: '100%', height: 50, borderRadius: 25, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 17, gap: 10 }, searchLabel: { fontSize: 16, fontWeight: '600' }, error: { padding: 12, borderRadius: 12, marginTop: 12 },
   smartGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, smartCard: { width: '48%', flexGrow: 1, minHeight: 126, padding: 14, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth }, iconCircle: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, count: { fontSize: 27, fontWeight: '800', position: 'absolute', right: 14, top: 14 }, cardTitle: { fontSize: 16, fontWeight: '700', marginTop: 18 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 26, marginBottom: 9 }, sectionTitle: { fontSize: 22, fontWeight: '800' }, listBox: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' }, listRow: { minHeight: 55, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 11 }, listIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, listName: { fontSize: 17, fontWeight: '600', flex: 1 },
   fab: { position: 'absolute', right: 16, bottom: 18, width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center' },

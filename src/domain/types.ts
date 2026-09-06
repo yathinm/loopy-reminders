@@ -40,8 +40,6 @@ export interface Reminder {
   recurrence: RecurrenceRule | null;
   seriesId: string | null;
   notificationId: string | null;
-  snoozedUntil: string | null;
-  deletedAt?: string | null;
   tags: ReminderTag[];
 }
 

@@ -89,7 +89,6 @@ type ReminderRow = {
   due_at: string | null; has_time: number; is_completed: number; completed_at: string | null;
   priority: number; is_flagged: number; sort_order: number; list_id: string;
   recurrence_json: string | null; series_id: string | null; notification_id: string | null;
-  snoozed_until: string | null; deleted_at: string | null;
 };
 
 export async function fetchLists(db: SQLiteDatabase): Promise<ReminderList[]> {
@@ -117,8 +116,7 @@ export async function fetchReminders(db: SQLiteDatabase, includeDeleted = false)
     priority: row.priority as Reminder['priority'], isFlagged: Boolean(row.is_flagged),
     sortOrder: row.sort_order, listId: row.list_id,
     recurrence: parseRecurrence(row.recurrence_json),
-    seriesId: row.series_id, notificationId: row.notification_id,
-    snoozedUntil: row.snoozed_until, deletedAt: row.deleted_at, tags: tags.get(row.id) ?? [],
+    seriesId: row.series_id, notificationId: row.notification_id, tags: tags.get(row.id) ?? [],
   }));
 }
 
@@ -131,10 +129,6 @@ function parseRecurrence(value: string | null): Reminder['recurrence'] {
     if (!['daily', 'weekly', 'monthly', 'yearly'].includes(String(candidate.frequency)) || typeof candidate.interval !== 'number' || candidate.interval < 1) return null;
     return parsed as Reminder['recurrence'];
   } catch { return null; }
-}
-
-export async function fetchTags(db: SQLiteDatabase): Promise<ReminderTag[]> {
-  return db.getAllAsync<ReminderTag>('SELECT id, name FROM tags ORDER BY name COLLATE NOCASE');
 }
 
 export async function removeOrphanedTags(db: SQLiteDatabase): Promise<void> {
