@@ -29,9 +29,6 @@ export default function HomeScreen() {
         <Pressable accessibilityRole="button" accessibilityLabel="Search reminders" onPress={() => router.push('/search')} style={[styles.searchButton, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Ionicons name="search" size={22} color={colors.accent} /><Text style={[styles.searchLabel, { color: colors.secondaryText }]}>Search</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Add reminder" onPress={() => router.push('/reminder/new')} style={({ pressed }) => [styles.quickAdd, { backgroundColor: colors.accent, opacity: pressed ? 0.78 : 1 }]}>
-          <Ionicons name="add" size={25} color={colors.onColor} />
-        </Pressable>
         </View>
         {error && <Text accessibilityRole="alert" style={[styles.error, { color: colors.danger, backgroundColor: colors.surface }]}>{error}</Text>}
         <View style={styles.smartGrid}>
@@ -61,7 +58,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' }, content: { padding: 16, paddingBottom: 110 }, toolbar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 }, searchButton: { flex: 1, height: 50, borderRadius: 25, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 17, gap: 10 }, searchLabel: { fontSize: 16, fontWeight: '600' }, quickAdd: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' }, error: { padding: 12, borderRadius: 12, marginTop: 12 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' }, content: { padding: 16, paddingBottom: 110 }, toolbar: { width: '100%', marginBottom: 16 }, searchButton: { width: '100%', height: 50, borderRadius: 25, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 17, gap: 10 }, searchLabel: { fontSize: 16, fontWeight: '600' }, error: { padding: 12, borderRadius: 12, marginTop: 12 },
   smartGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, smartCard: { width: '48%', flexGrow: 1, minHeight: 126, padding: 14, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth }, iconCircle: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, count: { fontSize: 27, fontWeight: '800', position: 'absolute', right: 14, top: 14 }, cardTitle: { fontSize: 16, fontWeight: '700', marginTop: 18 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 26, marginBottom: 9 }, sectionTitle: { fontSize: 22, fontWeight: '800' }, listBox: { borderRadius: 17, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' }, listRow: { minHeight: 55, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 11 }, listIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, listName: { fontSize: 17, fontWeight: '600', flex: 1 },
   fab: { position: 'absolute', right: 16, bottom: 18, width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center' },
