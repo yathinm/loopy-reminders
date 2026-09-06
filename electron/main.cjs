@@ -32,6 +32,8 @@ function createWindow(startUrl) {
     show: false,
     backgroundColor: '#FFF7F4',
     title: 'Loopy Reminders',
+    titleBarStyle: 'hidden',
+    trafficLightPosition: { x: 16, y: 16 },
     icon: path.join(__dirname, '..', 'assets', 'desktop', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -64,6 +66,8 @@ function createListWindow(listId) {
     minHeight: 480,
     backgroundColor: '#FFF7F4',
     title: 'Loopy Reminders',
+    titleBarStyle: 'hidden',
+    trafficLightPosition: { x: 16, y: 16 },
     icon: path.join(__dirname, '..', 'assets', 'desktop', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
