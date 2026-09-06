@@ -61,7 +61,7 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
   await db.runAsync(
     `INSERT OR IGNORE INTO lists
       (id, name, color, symbol, sort_order, is_inbox, created_at, updated_at)
-      VALUES (?, 'Inbox', '#C97882', 'tray', 0, 1, ?, ?)`,
+      VALUES (?, 'Reminders', '#C97882', 'list', 0, 1, ?, ?)`,
     INBOX_ID, now, now,
   );
   await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (1)');
@@ -72,6 +72,11 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
     await db.execAsync('ALTER TABLE reminders ADD COLUMN deleted_at TEXT');
   }
   await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (3)');
+  await db.runAsync(
+    "UPDATE lists SET name='Reminders', symbol='list', updated_at=? WHERE id=? AND is_inbox=1",
+    now, INBOX_ID,
+  );
+  await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (4)');
 }
 
 type ListRow = {
