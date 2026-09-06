@@ -10,8 +10,11 @@ export function ReminderRow({ reminder, onToggle, onPress, onFlag, onDelete }: {
   const close = () => Animated.spring(offset, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start(() => setOpen(false));
   const panResponder = useRef(PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,
+    onMoveShouldSetPanResponderCapture: (_, gesture) => Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,
+    onPanResponderTerminationRequest: () => false,
     onPanResponderMove: (_, gesture) => offset.setValue(Math.max(-210, Math.min(0, gesture.dx + (open ? -210 : 0)))),
     onPanResponderRelease: (_, gesture) => { const shouldOpen = open ? gesture.dx <= -80 : gesture.dx < -80; Animated.spring(offset, { toValue: shouldOpen ? -210 : 0, useNativeDriver: true, bounciness: 0 }).start(() => setOpen(shouldOpen)); },
+    onPanResponderTerminate: () => close(),
   })).current;
   return <View style={[styles.container, { borderBottomColor: colors.border, backgroundColor: colors.surface }]} {...panResponder.panHandlers}>
     <View style={styles.actions}>
