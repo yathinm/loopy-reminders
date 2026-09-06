@@ -5,6 +5,10 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
+    "desktop": "concurrently -k -s first \"expo start --web --port 8081\" \"wait-on http://127.0.0.1:8081 && electron electron/main.cjs --dev-url=http://127.0.0.1:8081\"",
+    "desktop:web": "expo export --platform web --output-dir dist-web",
+    "desktop:pack": "npm run desktop:web && electron-builder --dir",
+    "desktop:build": "npm run desktop:web && electron-builder",
     "ios": "expo run:ios",
     "prebuild": "expo prebuild",
     "typecheck": "tsc --noEmit",
@@ -38,11 +42,15 @@
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "29.5.14",
     "@types/react": "~19.1.10",
+    "concurrently": "^10.0.5",
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.39.0",
     "eslint-config-expo": "~10.0.0",
     "jest": "~29.7.0",
     "jest-expo": "~54.0.18",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "wait-on": "^9.1.0"
   },
   "jest": {
     "preset": "jest-expo",
@@ -51,5 +59,34 @@
       "/ios/",
       "/android/"
     ]
+  },
+  "build": {
+    "appId": "com.yathinm.loopyreminders.desktop",
+    "productName": "Loopy Reminders",
+    "artifactName": "Loopy-Reminders-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "dist-web/**/*",
+      "assets/desktop/**/*"
+    ],
+    "extraMetadata": {
+      "main": "electron/main.cjs"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/desktop/icon.icns",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "icon": "assets/app-icon.png",
+      "target": ["nsis", "portable"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

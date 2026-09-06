@@ -12,6 +12,8 @@ xcuserdata/
 node_modules/
 .expo/
 dist/
+dist-web/
+release/
 coverage/
 npm-debug.log*
 # Native projects are generated deterministically by Expo prebuild.

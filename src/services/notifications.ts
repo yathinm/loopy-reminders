@@ -35,6 +35,11 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   return isAllowed(permissions);
 }
 
+export async function getNotificationPermissionStatus(): Promise<'granted' | 'denied' | 'undetermined'> {
+  const { status } = await Notifications.getPermissionsAsync();
+  return status;
+}
+
 function isAllowed(permissions: Notifications.NotificationPermissionsStatus): boolean {
   return permissions.granted || permissions.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
 }
@@ -42,6 +47,21 @@ function isAllowed(permissions: Notifications.NotificationPermissionsStatus): bo
 export async function cancelReminderNotification(notificationId: string | null): Promise<void> {
   if (!notificationId) return;
   await Notifications.cancelScheduledNotificationAsync(notificationId).catch(() => undefined);
+}
+
+export async function getScheduledNotificationIds(): Promise<string[]> {
+  return (await Notifications.getAllScheduledNotificationsAsync()).map((item) => item.identifier);
+}
+
+export function addNotificationResponseListener(listener: (actionIdentifier: string, reminderId: string) => void) {
+  return Notifications.addNotificationResponseReceivedListener((response) => {
+    const reminderId = response.notification.request.content.data?.reminderId;
+    if (typeof reminderId === 'string') listener(response.actionIdentifier, reminderId);
+  });
+}
+
+export async function cancelAllReminderNotifications(): Promise<void> {
+  await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
 export async function scheduleReminderNotification(reminder: Reminder, requestPermission = true): Promise<string | null> {

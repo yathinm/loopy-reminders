@@ -1,0 +1,150 @@
+const { app, BrowserWindow, ipcMain, Menu, nativeImage, Notification, session, shell, Tray } = require('electron');
+const fs = require('node:fs');
+const http = require('node:http');
+const path = require('node:path');
+
+const APP_PORT = 41731;
+const MAX_TIMER_DELAY = 2_147_000_000;
+const schedules = new Map();
+let mainWindow = null;
+let staticServer = null;
+let tray = null;
+let quitting = false;
+
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) app.quit();
+
+function showWindow() {
+  if (!mainWindow) return;
+  mainWindow.show();
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.focus();
+}
+
+function createWindow(startUrl) {
+  mainWindow = new BrowserWindow({
+    width: 1100,
+    height: 760,
+    minWidth: 760,
+    minHeight: 600,
+    show: false,
+    backgroundColor: '#FFF7F4',
+    title: 'Loopy Reminders',
+    icon: path.join(__dirname, '..', 'assets', 'app-icon.png'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://')) void shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const currentOrigin = new URL(mainWindow.webContents.getURL()).origin;
+    if (new URL(url).origin !== currentOrigin) { event.preventDefault(); if (url.startsWith('https://')) void shell.openExternal(url); }
+  });
+  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.on('close', (event) => { if (!quitting) { event.preventDefault(); mainWindow.hide(); } });
+  mainWindow.on('closed', () => { mainWindow = null; });
+  void mainWindow.loadURL(startUrl);
+}
+
+function configureWebCompatibility() {
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Cross-Origin-Opener-Policy': ['same-origin'],
+        'Cross-Origin-Embedder-Policy': ['credentialless'],
+      },
+    });
+  });
+}
+
+function createTray() {
+  const image = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'app-icon.png')).resize({ width: 18, height: 18 });
+  tray = new Tray(image);
+  tray.setToolTip('Loopy Reminders');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Open Loopy Reminders', click: showWindow },
+    { type: 'separator' },
+    { label: 'Quit', click: () => { quitting = true; app.quit(); } },
+  ]));
+  tray.on('click', showWindow);
+}
+
+function scheduleTimer(entry) {
+  const remaining = entry.dueAt - Date.now();
+  if (remaining <= 0) {
+    schedules.delete(entry.id);
+    if (Notification.isSupported()) {
+      const notification = new Notification({ title: entry.title, body: entry.body, icon: path.join(__dirname, '..', 'assets', 'app-icon.png') });
+      notification.on('click', () => { showWindow(); mainWindow?.webContents.send('loopy:notification-clicked', entry.reminderId); });
+      notification.show();
+    }
+    return;
+  }
+  entry.timer = setTimeout(() => scheduleTimer(entry), Math.min(remaining, MAX_TIMER_DELAY));
+}
+
+function registerIpc() {
+  ipcMain.handle('loopy:notifications:list', () => [...schedules.keys()]);
+  ipcMain.handle('loopy:notifications:schedule', (_event, input) => {
+    if (!input || typeof input.id !== 'string' || typeof input.dueAt !== 'number') throw new Error('Invalid notification request.');
+    const previous = schedules.get(input.id);
+    if (previous?.timer) clearTimeout(previous.timer);
+    const entry = { id: input.id, reminderId: String(input.reminderId), title: String(input.title), body: String(input.body), dueAt: input.dueAt, timer: null };
+    schedules.set(entry.id, entry);
+    scheduleTimer(entry);
+    return entry.id;
+  });
+  ipcMain.handle('loopy:notifications:cancel', (_event, id) => { const entry = schedules.get(id); if (entry?.timer) clearTimeout(entry.timer); schedules.delete(id); });
+  ipcMain.handle('loopy:notifications:cancel-all', () => { for (const entry of schedules.values()) if (entry.timer) clearTimeout(entry.timer); schedules.clear(); });
+}
+
+function contentType(filePath) {
+  const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.wasm': 'application/wasm', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.ttf': 'font/ttf' };
+  return types[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
+}
+
+function startStaticServer() {
+  const root = path.resolve(__dirname, '..', 'dist-web');
+  staticServer = http.createServer((request, response) => {
+    response.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    response.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+    const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
+    let filePath = path.resolve(root, '.' + pathname);
+    if (!filePath.startsWith(root)) { response.writeHead(403); response.end(); return; }
+    if (pathname === '/' || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) filePath = path.join(root, 'index.html');
+    fs.readFile(filePath, (error, data) => {
+      if (error) { response.writeHead(404); response.end('Not found'); return; }
+      response.writeHead(200, { 'Content-Type': contentType(filePath), 'Cache-Control': filePath.endsWith('index.html') ? 'no-store' : 'public, max-age=31536000, immutable' });
+      response.end(data);
+    });
+  });
+  return new Promise((resolve, reject) => {
+    staticServer.once('error', reject);
+    staticServer.listen(APP_PORT, '127.0.0.1', () => resolve('http://127.0.0.1:' + APP_PORT));
+  });
+}
+
+app.on('second-instance', showWindow);
+app.on('before-quit', () => { quitting = true; });
+app.on('window-all-closed', () => { if (process.platform === 'darwin' && quitting) app.quit(); });
+app.on('activate', () => { if (mainWindow) showWindow(); });
+
+app.whenReady().then(async () => {
+  app.setAppUserModelId('com.yathinm.loopyreminders.desktop');
+  configureWebCompatibility();
+  registerIpc();
+  const devArg = process.argv.find((value) => value.startsWith('--dev-url='));
+  const startUrl = devArg ? devArg.slice('--dev-url='.length) : await startStaticServer();
+  createWindow(startUrl);
+  createTray();
+}).catch((error) => { console.error(error); app.quit(); });
+
+app.on('quit', () => { staticServer?.close(); });

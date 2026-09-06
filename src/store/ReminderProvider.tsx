@@ -1,12 +1,11 @@
 import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
-import * as Notifications from 'expo-notifications';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { advanceRule, nextOccurrence } from '@/domain/recurrence';
 import { Reminder, ReminderDraft, ReminderList, ReminderTag } from '@/domain/types';
 import { fetchLists, fetchReminders, fetchTags, INBOX_ID, removeOrphanedTags } from '@/data/database';
-import { cancelReminderNotification, COMPLETE_ACTION, configureNotifications, scheduleReminderNotification, snoozeNotification, SNOOZE_ACTION } from '@/services/notifications';
+import { addNotificationResponseListener, cancelAllReminderNotifications, cancelReminderNotification, COMPLETE_ACTION, configureNotifications, getScheduledNotificationIds, scheduleReminderNotification, snoozeNotification, SNOOZE_ACTION } from '@/services/notifications';
 
 type ReminderContextValue = {
   reminders: Reminder[];
@@ -66,8 +65,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   }, [db]);
 
   const reconcileNotifications = useCallback(async () => {
-    const pending = await Notifications.getAllScheduledNotificationsAsync();
-    const pendingIds = new Set(pending.map((item) => item.identifier));
+    const pendingIds = new Set(await getScheduledNotificationIds());
     for (const reminder of await fetchReminders(db)) {
       const shouldSchedule = Boolean(reminder.dueAt && reminder.hasTime && !reminder.isCompleted && new Date(reminder.dueAt).getTime() > Date.now());
       if (shouldSchedule && (!reminder.notificationId || !pendingIds.has(reminder.notificationId))) {
@@ -172,11 +170,9 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     void configureNotifications().then(reconcileNotifications).catch(() => undefined);
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const reminderId = response.notification.request.content.data?.reminderId;
-      if (typeof reminderId !== 'string') return;
-      if (response.actionIdentifier === COMPLETE_ACTION) void toggleReminder(reminderId, true);
-      if (response.actionIdentifier === SNOOZE_ACTION) {
+    const subscription = addNotificationResponseListener((actionIdentifier, reminderId) => {
+      if (actionIdentifier === COMPLETE_ACTION) void toggleReminder(reminderId, true);
+      if (actionIdentifier === SNOOZE_ACTION) {
         const reminder = reminders.find((item) => item.id === reminderId);
         if (reminder) void snoozeNotification(reminder).then((notificationId) => updateNotificationId(reminder.id, notificationId)).then(refresh);
       }
@@ -210,7 +206,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   }, [db]);
 
   const deleteAllData = useCallback(async () => {
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    await cancelAllReminderNotifications();
     await db.withTransactionAsync(async () => {
       await db.runAsync('DELETE FROM reminder_tags');
       await db.runAsync('DELETE FROM reminders');

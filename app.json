@@ -8,6 +8,11 @@
     "userInterfaceStyle": "automatic",
     "scheme": "loopyreminders",
     "newArchEnabled": true,
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/app-icon.png"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yathinm.LoopyReminders",

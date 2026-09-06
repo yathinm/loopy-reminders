@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AppFrame } from '@/components/AppFrame';
 import { migrateDatabase } from '@/data/database';
 import { ReminderProvider, useReminders } from '@/store/ReminderProvider';
 import { colorsFor } from '@/theme/theme';
@@ -12,13 +13,15 @@ export default function RootLayout() {
   const scheme = useColorScheme(); const colors = colorsFor(scheme);
   return (
     <SafeAreaProvider>
-      <SQLiteProvider databaseName="loopy-reminders.db" onInit={migrateDatabase} useSuspense>
-        <React.Suspense fallback={<View style={[styles.loading, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.accent} /></View>}>
-          <ReminderProvider>
-            <AppNavigator />
-          </ReminderProvider>
-        </React.Suspense>
-      </SQLiteProvider>
+      <AppFrame>
+        <SQLiteProvider databaseName="loopy-reminders.db" onInit={migrateDatabase} useSuspense>
+          <React.Suspense fallback={<View style={[styles.loading, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.accent} /></View>}>
+            <ReminderProvider>
+              <AppNavigator />
+            </ReminderProvider>
+          </React.Suspense>
+        </SQLiteProvider>
+      </AppFrame>
     </SafeAreaProvider>
   );
 }
