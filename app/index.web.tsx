@@ -162,7 +162,7 @@ export default function DesktopHomeScreen() {
               );
             })}
             <Pressable onPress={() => choose({ kind: 'deleted' })} style={[styles.navRow, !query.trim() && selection.kind === 'deleted' && { backgroundColor: colors.background }]}> 
-              <View style={[styles.navIcon, { backgroundColor: colors.softBrand }]}><Ionicons name="trash-outline" size={17} color={colors.accent} /></View>
+              <View style={[styles.navIcon, { backgroundColor: colors.brand }]}><Ionicons name="trash-outline" size={17} color={colors.onColor} /></View>
               <Text style={[styles.navLabel, { color: colors.text }]}>Recently Deleted</Text>
               <Text style={{ color: colors.secondaryText }}>{deletedReminders.length}</Text>
             </Pressable>
