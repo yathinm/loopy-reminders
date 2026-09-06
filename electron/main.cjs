@@ -101,10 +101,20 @@ function scheduleTimer(entry) {
   if (remaining <= 0) {
     schedules.delete(entry.id);
     if (Notification.isSupported()) {
-      const notification = new Notification({ title: entry.title, body: entry.body, icon: path.join(__dirname, '..', 'assets', 'desktop', 'icon.png') });
+      const notification = new Notification({
+        title: entry.title,
+        subtitle: 'Loopy Reminders',
+        body: entry.body,
+        sound: 'default',
+        icon: path.join(__dirname, '..', 'assets', 'desktop', 'icon.png'),
+      });
       notification.on('click', () => { showWindow(); mainWindow?.webContents.send('loopy:notification-clicked', entry.reminderId); });
       notification.show();
+    } else {
+      console.warn('Desktop notifications are unavailable; showing Loopy instead.');
+      showWindow();
     }
+    if (process.platform === 'darwin' && app.dock) app.dock.bounce('critical');
     return;
   }
   entry.timer = setTimeout(() => scheduleTimer(entry), Math.min(remaining, MAX_TIMER_DELAY));
