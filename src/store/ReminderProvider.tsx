@@ -44,6 +44,8 @@ export function ReminderProvider({ children }: PropsWithChildren) {
 
   const refresh = useCallback(async () => {
     try {
+      await db.runAsync("DELETE FROM reminders WHERE deleted_at IS NOT NULL AND deleted_at <= datetime('now', '-30 days')");
+      await removeOrphanedTags(db);
       const [nextReminders, nextDeletedReminders, nextLists, nextTags, onboarding] = await Promise.all([
         fetchReminders(db), fetchReminders(db, true), fetchLists(db), fetchTags(db),
         db.getFirstAsync<{ value: string }>("SELECT value FROM app_settings WHERE key='onboarding_complete'"),
