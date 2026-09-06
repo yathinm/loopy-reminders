@@ -46,8 +46,9 @@ export default function DateTimeField({ value, mode, minimumDate, accentColor, o
         background: 'transparent',
         border: '1px solid #D8D1D3',
         borderRadius: 10,
-        color: '#21171B',
-        font: 'inherit',
+        color: '#55142F',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif',
+        fontSize: 16,
         padding: '8px 10px',
       }}
     />
