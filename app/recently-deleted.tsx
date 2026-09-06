@@ -17,9 +17,8 @@ export default function RecentlyDeletedScreen() {
     ]);
   }
 
-  return <Screen>
-    <Stack.Screen options={{ title: 'Recently Deleted' }} />
-    <Text style={[styles.heading, { color: colors.text }]}>Recently Deleted</Text>
+  return <Screen backgroundColor={colors.softBrand}>
+    <Stack.Screen options={{ title: 'Recently Deleted', headerStyle: { backgroundColor: colors.softBrand }, headerTintColor: colors.accent, headerShadowVisible: false }} />
     <Text style={[styles.description, { color: colors.secondaryText }]}>Reminders are available here for 30 days. After that time, reminders will be permanently deleted.</Text>
     {deletedReminders.length === 0 ? <EmptyState title="Recently Deleted is empty" message="Deleted reminders will appear here." /> : (
       <View style={styles.rows}>
@@ -49,7 +48,6 @@ function formatDate(value: string, hasTime: boolean) {
 }
 
 const styles = StyleSheet.create({
-  heading: { fontSize: 38, lineHeight: 44, fontWeight: '800', marginBottom: 22 },
   description: { fontSize: 18, lineHeight: 27, marginBottom: 30 },
   rows: { gap: 0 },
   row: { flexDirection: 'row', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, gap: 14 },

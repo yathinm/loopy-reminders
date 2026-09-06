@@ -3,14 +3,14 @@ import { ScrollView, StyleProp, StyleSheet, useColorScheme, ViewStyle } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colorsFor } from '@/theme/theme';
 
-export function Screen({ children, scroll = true, contentStyle }: PropsWithChildren<{ scroll?: boolean; contentStyle?: StyleProp<ViewStyle> }>) {
+export function Screen({ children, scroll = true, contentStyle, backgroundColor }: PropsWithChildren<{ scroll?: boolean; contentStyle?: StyleProp<ViewStyle>; backgroundColor?: string }>) {
   const colors = colorsFor(useColorScheme());
-  if (!scroll) return <SafeAreaView edges={['bottom']} style={[styles.safe, { backgroundColor: colors.background }, contentStyle]}>{children}</SafeAreaView>;
+  const surfaceColor = backgroundColor ?? colors.background;
+  if (!scroll) return <SafeAreaView edges={['bottom']} style={[styles.safe, { backgroundColor: surfaceColor }, contentStyle]}>{children}</SafeAreaView>;
   return (
-    <SafeAreaView edges={['bottom']} style={[styles.safe, { backgroundColor: colors.background }]}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, contentStyle]}>{children}</ScrollView>
+    <SafeAreaView edges={['bottom']} style={[styles.safe, { backgroundColor: surfaceColor }]}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { backgroundColor: surfaceColor }, contentStyle]}>{children}</ScrollView>
     </SafeAreaView>
   );
 }
 const styles = StyleSheet.create({ safe: { flex: 1 }, content: { padding: 16, paddingBottom: 48 } });
-
