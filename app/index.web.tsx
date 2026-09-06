@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { ReminderRow } from '@/components/ReminderRow';
@@ -10,6 +10,17 @@ import { useReminders } from '@/store/ReminderProvider';
 import { colorsFor, palette } from '@/theme/theme';
 
 type Selection = { kind: 'smart'; id: SmartList } | { kind: 'list'; id: string } | { kind: 'deleted' };
+type ContextMenuState = { listId: string; x: number; y: number } | null;
+type SortMode = 'due' | 'title' | 'manual';
+
+function readDesktopStorage<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try { const value = window.localStorage.getItem(key); return value ? JSON.parse(value) as T : fallback; } catch { return fallback; }
+}
+
+function writeDesktopStorage(key: string, value: unknown) {
+  try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage is optional */ }
+}
 
 const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
   { id: 'today', title: 'Today', icon: 'calendar', color: palette.dustyRose },
@@ -22,9 +33,20 @@ const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.gl
 export default function DesktopHomeScreen() {
   const router = useRouter();
   const colors = colorsFor(useColorScheme());
-  const { reminders, deletedReminders, lists, toggleReminder, toggleFlag, deleteReminder, restoreReminder, permanentlyDeleteReminder } = useReminders();
+  const { reminders, deletedReminders, lists, toggleReminder, toggleFlag, deleteReminder, restoreReminder, permanentlyDeleteReminder, deleteList } = useReminders();
   const [selection, setSelection] = useState<Selection>({ kind: 'smart', id: 'today' });
   const [query, setQuery] = useState('');
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+  const [submenu, setSubmenu] = useState<'sort' | 'group' | null>(null);
+  const [pinnedLists, setPinnedLists] = useState<string[]>(() => readDesktopStorage('loopy:pinned-lists', []));
+  const [showCompletedLists, setShowCompletedLists] = useState<string[]>(() => readDesktopStorage('loopy:show-completed-lists', []));
+  const [sortMode, setSortMode] = useState<SortMode>(() => readDesktopStorage('loopy:sort-mode', 'due'));
+  const [groups, setGroups] = useState<Record<string, string[]>>(() => readDesktopStorage('loopy:list-groups', {}));
+
+  useEffect(() => writeDesktopStorage('loopy:pinned-lists', pinnedLists), [pinnedLists]);
+  useEffect(() => writeDesktopStorage('loopy:show-completed-lists', showCompletedLists), [showCompletedLists]);
+  useEffect(() => writeDesktopStorage('loopy:sort-mode', sortMode), [sortMode]);
+  useEffect(() => writeDesktopStorage('loopy:list-groups', groups), [groups]);
 
   const selectedList = selection.kind === 'list' ? lists.find((list) => list.id === selection.id) : undefined;
   const title = query.trim()
@@ -38,12 +60,20 @@ export default function DesktopHomeScreen() {
   const visibleReminders = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     if (needle) {
-      return sortReminders(reminders.filter((item) => [item.title, item.notes, ...item.tags.map((tag) => tag.name)].some((value) => value.toLocaleLowerCase().includes(needle))));
+      return sortDesktopReminders(reminders.filter((item) => [item.title, item.notes, ...item.tags.map((tag) => tag.name)].some((value) => value.toLocaleLowerCase().includes(needle))), sortMode);
     }
     if (selection.kind === 'smart') return sortReminders(filterSmartList(reminders, selection.id));
-    if (selection.kind === 'list') return sortReminders(reminders.filter((item) => item.listId === selection.id && !item.isCompleted));
+    if (selection.kind === 'list') return sortDesktopReminders(reminders.filter((item) => item.listId === selection.id && (showCompletedLists.includes(selection.id) || !item.isCompleted)), sortMode);
     return [];
-  }, [query, reminders, selection]);
+  }, [query, reminders, selection, showCompletedLists, sortMode]);
+
+  const orderedLists = useMemo(() => [...lists].sort((a, b) => {
+    const aPinned = pinnedLists.indexOf(a.id); const bPinned = pinnedLists.indexOf(b.id);
+    if (aPinned === -1 && bPinned === -1) return 0;
+    if (aPinned === -1) return 1;
+    if (bPinned === -1) return -1;
+    return aPinned - bPinned;
+  }), [lists, pinnedLists]);
 
   const canAddReminder = selection.kind !== 'deleted' && !(selection.kind === 'smart' && selection.id === 'completed');
   const newReminderParams = selection.kind === 'list' ? { listId: selection.id } : undefined;
@@ -51,6 +81,50 @@ export default function DesktopHomeScreen() {
   function choose(next: Selection) {
     setQuery('');
     setSelection(next);
+    setContextMenu(null);
+    setSubmenu(null);
+  }
+
+  function openContextMenu(event: any, listId: string) {
+    event.preventDefault?.();
+    const native = event.nativeEvent ?? event;
+    setContextMenu({ listId, x: native.pageX ?? native.clientX ?? 160, y: native.pageY ?? native.clientY ?? 160 });
+    setSubmenu(null);
+  }
+
+  function closeContextMenu() { setContextMenu(null); setSubmenu(null); }
+
+  async function shareList(listName: string) {
+    const text = `Loopy Reminders list: ${listName}`;
+    try {
+      if (typeof navigator.share === 'function') await navigator.share({ title: listName, text });
+      else if (navigator.clipboard) await navigator.clipboard.writeText(text);
+      Alert.alert('List shared', typeof navigator.share === 'function' ? 'Share sheet opened.' : 'List details copied to the clipboard.');
+    } catch { /* cancelled share */ }
+    closeContextMenu();
+  }
+
+  function createGroup(listId: string) {
+    const name = typeof window !== 'undefined' ? window.prompt('New group name')?.trim() : '';
+    if (!name) return;
+    setGroups((current) => ({ ...current, [name]: [...new Set([...(current[name] ?? []), listId])] }));
+    closeContextMenu();
+  }
+
+  function showListInfo(listId: string) {
+    const list = lists.find((item) => item.id === listId); if (!list) return;
+    const items = reminders.filter((item) => item.listId === listId);
+    Alert.alert(list.name, `${items.length} reminders\n${items.filter((item) => item.isCompleted).length} completed`);
+    closeContextMenu();
+  }
+
+  function deleteSelectedList(listId: string) {
+    const list = lists.find((item) => item.id === listId); if (!list || list.isInbox) return;
+    Alert.alert('Delete list?', `Reminders in “${list.name}” will move to Reminders.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void deleteList(listId) },
+    ]);
+    closeContextMenu();
   }
 
   function confirmPermanentDelete(reminder: Reminder) {
@@ -101,13 +175,13 @@ export default function DesktopHomeScreen() {
 
           <Text style={[styles.sectionTitle, { color: colors.secondaryText }]}>My Lists</Text>
           <View style={styles.listNavigation}>
-            {lists.map((list) => {
+            {orderedLists.map((list) => {
               const selected = !query.trim() && selection.kind === 'list' && selection.id === list.id;
               return (
-                <Pressable key={list.id} onPress={() => choose({ kind: 'list', id: list.id })} style={[styles.navRow, selected && { backgroundColor: colors.background }]}>
+                <Pressable key={list.id} onPress={() => choose({ kind: 'list', id: list.id })} {...({ onContextMenu: (event: any) => openContextMenu(event, list.id) } as any)} style={[styles.navRow, selected && { backgroundColor: colors.background }]}>
                   <View style={[styles.navIcon, { backgroundColor: list.color }]}><Ionicons name={list.symbol as keyof typeof Ionicons.glyphMap} size={17} color={colors.onColor} /></View>
                   <Text numberOfLines={1} style={[styles.navLabel, { color: colors.text }]}>{list.name}</Text>
-                  <Text style={{ color: colors.secondaryText }}>{reminders.filter((item) => item.listId === list.id && !item.isCompleted).length}</Text>
+                  <Text style={{ color: colors.secondaryText }}>{reminders.filter((item) => item.listId === list.id && (showCompletedLists.includes(list.id) || !item.isCompleted)).length}</Text>
                 </Pressable>
               );
             })}
@@ -159,8 +233,76 @@ export default function DesktopHomeScreen() {
           )}
         </ScrollView>
       </View>
+      {contextMenu && <DesktopContextMenu
+        list={lists.find((list) => list.id === contextMenu.listId)!}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        colors={colors}
+        submenu={submenu}
+        isPinned={pinnedLists.includes(contextMenu.listId)}
+        showingCompleted={showCompletedLists.includes(contextMenu.listId)}
+        groups={groups}
+        sortMode={sortMode}
+        onClose={closeContextMenu}
+        onSubmenu={setSubmenu}
+        onPin={() => { setPinnedLists((current) => current.includes(contextMenu.listId) ? current.filter((id) => id !== contextMenu.listId) : [contextMenu.listId, ...current]); closeContextMenu(); }}
+        onInfo={() => showListInfo(contextMenu.listId)}
+        onCompleted={() => { setShowCompletedLists((current) => current.includes(contextMenu.listId) ? current.filter((id) => id !== contextMenu.listId) : [...current, contextMenu.listId]); closeContextMenu(); }}
+        onOpenWindow={() => { void window.loopyDesktop?.openListWindow?.(contextMenu.listId); closeContextMenu(); }}
+        onSort={(mode: SortMode) => { setSortMode(mode); closeContextMenu(); }}
+        onRename={() => { closeContextMenu(); router.push({ pathname: '/list-editor', params: { id: contextMenu.listId } }); }}
+        onDelete={() => deleteSelectedList(contextMenu.listId)}
+        onGroup={(name: string) => { setGroups((current) => ({ ...current, [name]: [...new Set([...(current[name] ?? []), contextMenu.listId])] })); closeContextMenu(); }}
+        onNewGroup={() => createGroup(contextMenu.listId)}
+        onShare={() => void shareList(lists.find((list) => list.id === contextMenu.listId)?.name ?? 'Reminders')}
+      />}
     </View>
   );
+}
+
+function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingCompleted, groups, sortMode, onClose, onSubmenu, onPin, onInfo, onCompleted, onOpenWindow, onSort, onRename, onDelete, onGroup, onNewGroup, onShare }: any) {
+  if (!list) return null;
+  const left = Math.max(8, Math.min(x, (typeof window !== 'undefined' ? window.innerWidth : 900) - 300));
+  const top = Math.max(8, Math.min(y, (typeof window !== 'undefined' ? window.innerHeight : 700) - 510));
+  return <>
+    <Pressable onPress={onClose} style={styles.menuBackdrop} />
+    <View style={[styles.contextMenu, { left, top, backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <MenuItem label={isPinned ? 'Unpin List' : 'Pin List'} colors={colors} onPress={onPin} />
+      <MenuItem label="Show List Info" colors={colors} onPress={onInfo} />
+      <MenuItem label={showingCompleted ? 'Hide Completed' : 'Show Completed'} colors={colors} shortcut="⇧⌘H" onPress={onCompleted} />
+      <MenuDivider colors={colors} />
+      <MenuItem label="Open List in New Window" colors={colors} onPress={onOpenWindow} />
+      <MenuDivider colors={colors} />
+      <MenuItem label="Sort By" colors={colors} arrow onPress={() => onSubmenu(submenu === 'sort' ? null : 'sort')} />
+      {submenu === 'sort' && <View style={[styles.submenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <MenuItem label="Due Date" colors={colors} selected={sortMode === 'due'} onPress={() => onSort('due')} />
+        <MenuItem label="Title" colors={colors} selected={sortMode === 'title'} onPress={() => onSort('title')} />
+        <MenuItem label="Manual" colors={colors} selected={sortMode === 'manual'} onPress={() => onSort('manual')} />
+      </View>}
+      <MenuDivider colors={colors} />
+      <MenuItem label="Rename" colors={colors} onPress={onRename} />
+      <MenuItem label="Delete" colors={colors} onPress={onDelete} disabled={list.isInbox} />
+      <MenuItem label="Add to Group" colors={colors} arrow onPress={() => onSubmenu(submenu === 'group' ? null : 'group')} />
+      {submenu === 'group' && <View style={[styles.submenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {Object.keys(groups).map((name) => <MenuItem key={name} label={name} colors={colors} onPress={() => onGroup(name)} />)}
+        <MenuItem label="Create New Group…" colors={colors} onPress={onNewGroup} />
+      </View>}
+      <MenuDivider colors={colors} />
+      <MenuItem label="Share List" colors={colors} onPress={onShare} />
+    </View>
+  </>;
+}
+
+function MenuItem({ label, colors, onPress, arrow, shortcut, selected, disabled }: any) {
+  return <Pressable disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.menuItem, { opacity: disabled ? 0.4 : pressed ? 0.65 : 1 }]}>
+    <Text style={[styles.menuLabel, { color: colors.text }]}>{selected ? '✓ ' : ''}{label}</Text>
+    {shortcut && <Text style={[styles.menuShortcut, { color: colors.secondaryText }]}>{shortcut}</Text>}
+    {arrow && <Ionicons name="chevron-forward" size={17} color={colors.secondaryText} />}
+  </Pressable>;
+}
+
+function MenuDivider({ colors }: { colors: ReturnType<typeof colorsFor> }) {
+  return <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />;
 }
 
 function DeletedPane({ reminders, onRestore, onDelete }: { reminders: Reminder[]; onRestore: (id: string) => Promise<void>; onDelete: (reminder: Reminder) => void }) {
@@ -189,6 +331,12 @@ function formatDue(reminder: Reminder) {
   const date = new Date(reminder.dueAt!);
   const dateText = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
   return reminder.hasTime ? `${dateText}, ${new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(date)}` : dateText;
+}
+
+function sortDesktopReminders(items: Reminder[], mode: SortMode) {
+  if (mode === 'title') return [...items].sort((a, b) => a.title.localeCompare(b.title));
+  if (mode === 'manual') return [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+  return sortReminders(items);
 }
 
 const styles = StyleSheet.create({
@@ -225,4 +373,11 @@ const styles = StyleSheet.create({
   deletedBody: { flex: 1, gap: 3 },
   deletedTitle: { fontSize: 17, fontWeight: '700' },
   deletedAction: { fontSize: 14, fontWeight: '800', padding: 5 },
+  menuBackdrop: { ...StyleSheet.absoluteFillObject, zIndex: 20 },
+  contextMenu: { position: 'absolute', width: 292, borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, paddingVertical: 8, zIndex: 21, shadowColor: '#000', shadowOpacity: 0.22, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 12 } as never,
+  menuItem: { minHeight: 42, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  menuLabel: { flex: 1, fontSize: 16, fontWeight: '600' },
+  menuShortcut: { fontSize: 13 },
+  menuDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 12, marginVertical: 5 },
+  submenu: { position: 'absolute', left: 286, top: 185, width: 170, borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, paddingVertical: 8, zIndex: 22, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 7 } } as never,
 });

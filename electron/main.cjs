@@ -10,6 +10,8 @@ let mainWindow = null;
 let staticServer = null;
 let tray = null;
 let quitting = false;
+let appStartUrl = null;
+const listWindows = new Set();
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
@@ -53,6 +55,23 @@ function createWindow(startUrl) {
   void mainWindow.loadURL(startUrl);
 }
 
+function createListWindow(listId) {
+  if (typeof listId !== 'string' || !appStartUrl) return;
+  const window = new BrowserWindow({
+    width: 900,
+    height: 680,
+    minWidth: 620,
+    minHeight: 480,
+    backgroundColor: '#FFF7F4',
+    title: 'Loopy Reminders',
+    icon: path.join(__dirname, '..', 'assets', 'desktop', 'icon.png'),
+    webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  listWindows.add(window);
+  window.on('closed', () => listWindows.delete(window));
+  void window.loadURL(new URL(`/list/${encodeURIComponent(listId)}`, appStartUrl).toString());
+}
+
 function configureWebCompatibility() {
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
@@ -92,6 +111,7 @@ function scheduleTimer(entry) {
 }
 
 function registerIpc() {
+  ipcMain.handle('loopy:lists:open-window', (_event, listId) => createListWindow(listId));
   ipcMain.handle('loopy:notifications:list', () => [...schedules.keys()]);
   ipcMain.handle('loopy:notifications:schedule', (_event, input) => {
     if (!input || typeof input.id !== 'string' || typeof input.dueAt !== 'number') throw new Error('Invalid notification request.');
@@ -143,6 +163,7 @@ app.whenReady().then(async () => {
   registerIpc();
   const devArg = process.argv.find((value) => value.startsWith('--dev-url='));
   const startUrl = devArg ? devArg.slice('--dev-url='.length) : await startStaticServer();
+  appStartUrl = startUrl;
   createWindow(startUrl);
   createTray();
 }).catch((error) => { console.error(error); app.quit(); });
