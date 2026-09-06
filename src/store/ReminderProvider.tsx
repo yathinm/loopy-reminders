@@ -110,6 +110,8 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     const notificationId = await scheduleReminderNotification(saved).catch(() => null);
     await updateNotificationId(id, notificationId);
     await refresh();
+    const needsNotification = Boolean(saved.dueAt && saved.hasTime && !saved.isCompleted && new Date(saved.dueAt).getTime() > Date.now());
+    if (needsNotification && !notificationId) throw new Error('Reminder saved, but notifications are unavailable. Allow notifications for Loopy and try again.');
     return id;
   }, [db, refresh, reminders, updateNotificationId]);
 
@@ -136,15 +138,34 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     const nextCompleted = completed ?? !item.isCompleted;
     const now = new Date().toISOString();
     await db.withTransactionAsync(async () => {
+      if (!nextCompleted && item.recurrence && item.seriesId) {
+        const spawned = await db.getFirstAsync<{ id: string; created_at: string; updated_at: string }>(
+          'SELECT id, created_at, updated_at FROM reminders WHERE series_id=? AND due_at>? AND is_completed=0 ORDER BY due_at ASC LIMIT 1',
+          item.seriesId, item.dueAt ?? now,
+        );
+        if (spawned && spawned.created_at === spawned.updated_at) await db.runAsync('DELETE FROM reminders WHERE id=?', spawned.id);
+      }
       await db.runAsync('UPDATE reminders SET is_completed=?, completed_at=?, updated_at=?, notification_id=NULL WHERE id=?', nextCompleted ? 1 : 0, nextCompleted ? now : null, now, id);
       if (nextCompleted && item.recurrence && item.dueAt) {
-        const nextDate = nextOccurrence(new Date(item.dueAt), item.recurrence);
+        let cursor = new Date(item.dueAt);
+        let nextRule = item.recurrence;
+        let nextDate = nextOccurrence(cursor, nextRule);
+        while (nextDate && nextDate.getTime() <= Date.now()) {
+          cursor = nextDate;
+          nextRule = advanceRule(nextRule);
+          nextDate = nextOccurrence(cursor, nextRule);
+        }
+        const staleSpawned = await db.getAllAsync<{ id: string }>(
+          'SELECT id FROM reminders WHERE series_id=? AND due_at<=? AND is_completed=0 AND created_at=updated_at',
+          item.seriesId, now,
+        );
+        for (const stale of staleSpawned) await db.runAsync('DELETE FROM reminders WHERE id=?', stale.id);
         const existingNext = item.seriesId ? await db.getFirstAsync<{ id: string }>(
-          'SELECT id FROM reminders WHERE series_id=? AND due_at>? LIMIT 1', item.seriesId, item.dueAt,
+          'SELECT id FROM reminders WHERE series_id=? AND due_at>? LIMIT 1', item.seriesId, now,
         ) : null;
         if (nextDate && !existingNext) {
           const nextId = Crypto.randomUUID();
-          const nextRule = advanceRule(item.recurrence);
+          nextRule = advanceRule(nextRule);
           await db.runAsync(
             `INSERT INTO reminders (id,title,notes,created_at,updated_at,due_at,has_time,priority,is_flagged,sort_order,list_id,recurrence_json,series_id)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,

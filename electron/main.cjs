@@ -12,6 +12,7 @@ let tray = null;
 let quitting = false;
 let appStartUrl = null;
 const listWindows = new Set();
+let scheduleFile = null;
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
@@ -104,6 +105,7 @@ function scheduleTimer(entry) {
   const remaining = entry.dueAt - Date.now();
   if (remaining <= 0) {
     schedules.delete(entry.id);
+    persistSchedules();
     if (Notification.isSupported()) {
       const notification = new Notification({
         title: entry.title,
@@ -128,6 +130,28 @@ function scheduleTimer(entry) {
   entry.timer = setTimeout(() => scheduleTimer(entry), Math.min(remaining, MAX_TIMER_DELAY));
 }
 
+function persistSchedules() {
+  if (!scheduleFile) return;
+  try {
+    fs.writeFileSync(scheduleFile, JSON.stringify([...schedules.values()].map(({ timer, ...entry }) => entry)), 'utf8');
+  } catch (error) { console.warn('Unable to persist reminder schedules:', error); }
+}
+
+function restoreSchedules() {
+  if (!scheduleFile) return;
+  try {
+    const entries = JSON.parse(fs.readFileSync(scheduleFile, 'utf8'));
+    if (!Array.isArray(entries)) return;
+    for (const input of entries) {
+      if (!input || typeof input.id !== 'string' || typeof input.dueAt !== 'number' || input.dueAt <= Date.now()) continue;
+      const entry = { id: input.id, reminderId: String(input.reminderId), title: String(input.title), body: String(input.body), dueAt: input.dueAt, timer: null };
+      schedules.set(entry.id, entry);
+      scheduleTimer(entry);
+    }
+    persistSchedules();
+  } catch { /* no schedules yet */ }
+}
+
 function registerIpc() {
   ipcMain.handle('loopy:lists:open-window', (_event, listId) => createListWindow(listId));
   ipcMain.handle('loopy:notifications:list', () => [...schedules.keys()]);
@@ -137,11 +161,12 @@ function registerIpc() {
     if (previous?.timer) clearTimeout(previous.timer);
     const entry = { id: input.id, reminderId: String(input.reminderId), title: String(input.title), body: String(input.body), dueAt: input.dueAt, timer: null };
     schedules.set(entry.id, entry);
+    persistSchedules();
     scheduleTimer(entry);
     return entry.id;
   });
-  ipcMain.handle('loopy:notifications:cancel', (_event, id) => { const entry = schedules.get(id); if (entry?.timer) clearTimeout(entry.timer); schedules.delete(id); });
-  ipcMain.handle('loopy:notifications:cancel-all', () => { for (const entry of schedules.values()) if (entry.timer) clearTimeout(entry.timer); schedules.clear(); });
+  ipcMain.handle('loopy:notifications:cancel', (_event, id) => { const entry = schedules.get(id); if (entry?.timer) clearTimeout(entry.timer); schedules.delete(id); persistSchedules(); });
+  ipcMain.handle('loopy:notifications:cancel-all', () => { for (const entry of schedules.values()) if (entry.timer) clearTimeout(entry.timer); schedules.clear(); persistSchedules(); });
 }
 
 function contentType(filePath) {
@@ -182,6 +207,8 @@ app.whenReady().then(async () => {
   const devArg = process.argv.find((value) => value.startsWith('--dev-url='));
   const startUrl = devArg ? devArg.slice('--dev-url='.length) : await startStaticServer();
   appStartUrl = startUrl;
+  scheduleFile = path.join(app.getPath('userData'), 'reminder-schedules.json');
+  restoreSchedules();
   createWindow(startUrl);
   createTray();
 }).catch((error) => { console.error(error); app.quit(); });

@@ -33,7 +33,12 @@ export function ReminderEditor({ reminderId, initialListId }: { reminderId?: str
   async function save() {
     const draft: ReminderDraft = { title, notes, dueAt: hasDate ? dueAt : null, hasTime: hasDate && hasTime, priority, isFlagged: flagged, listId, recurrence: hasDate ? recurrence : null, tagNames: tags.split(',') };
     try { setSaving(true); await saveReminder(draft, reminderId); router.back(); }
-    catch (reason) { Alert.alert('Could not save reminder', reason instanceof Error ? reason.message : 'Please try again.'); setSaving(false); }
+    catch (reason) {
+      const message = reason instanceof Error ? reason.message : 'Please try again.';
+      const saved = message.startsWith('Reminder saved');
+      Alert.alert(saved ? 'Reminder saved' : 'Could not save reminder', message, saved ? [{ text: 'OK', onPress: () => router.back() }] : undefined);
+      setSaving(false);
+    }
   }
 
   async function confirmDelete() {
