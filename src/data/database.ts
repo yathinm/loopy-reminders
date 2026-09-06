@@ -47,6 +47,10 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
       tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
       PRIMARY KEY (reminder_id, tag_id)
     );
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS reminders_due_at_idx ON reminders(due_at);
     CREATE INDEX IF NOT EXISTS reminders_list_id_idx ON reminders(list_id);
     CREATE INDEX IF NOT EXISTS reminders_completed_idx ON reminders(is_completed);
@@ -112,4 +116,3 @@ export async function removeOrphanedTags(db: SQLiteDatabase): Promise<void> {
 }
 
 export { INBOX_ID };
-

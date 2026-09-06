@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { ReminderRow } from '@/components/ReminderRow';
 import { Screen } from '@/components/Screen';
@@ -17,6 +17,7 @@ export default function ListScreen() {
   const router = useRouter(); const colors = colorsFor(useColorScheme());
   const { reminders, lists, toggleReminder, deleteList } = useReminders();
   const [showCompleted, setShowCompleted] = useState(id === 'completed');
+  const [undoID, setUndoID] = useState<string | null>(null);
   const list = lists.find((item) => item.id === id);
   const title = smart ? smartTitles[id as SmartList] ?? 'Reminders' : list?.name ?? 'Reminders';
   const items = useMemo(() => {
@@ -29,17 +30,29 @@ export default function ListScreen() {
     await deleteList(list.id); router.back();
   }
 
+  function confirmRemoveList() {
+    Alert.alert('Delete this list?', 'Its reminders will be moved to Inbox.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void removeList() },
+    ]);
+  }
+
+  async function toggle(id: string, wasCompleted: boolean) {
+    await toggleReminder(id);
+    setUndoID(wasCompleted ? null : id);
+  }
+
   return (
     <Screen>
       <Stack.Screen options={{ title, headerRight: list && !list.isInbox ? () => <Pressable onPress={() => router.push({ pathname: '/list-editor', params: { id: list.id } })}><Text style={{ color: colors.accent, fontWeight: '700' }}>Edit</Text></Pressable> : undefined }} />
       {!smart && <Pressable accessibilityRole="switch" accessibilityState={{ checked: showCompleted }} onPress={() => setShowCompleted((value) => !value)} style={[styles.toggle, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text style={{ color: colors.text, flex: 1 }}>Show completed</Text><Ionicons name={showCompleted ? 'checkbox' : 'square-outline'} size={22} color={colors.accent} /></Pressable>}
       {items.length === 0 ? <EmptyState title={smart === 'completed' ? 'Nothing completed yet' : 'Nothing here yet'} /> : (
-        <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>{items.map((item) => <ReminderRow key={item.id} reminder={item} onToggle={() => void toggleReminder(item.id)} onPress={() => router.push(`/reminder/${item.id}`)} />)}</View>
+        <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>{items.map((item) => <ReminderRow key={item.id} reminder={item} onToggle={() => void toggle(item.id, item.isCompleted)} onPress={() => router.push(`/reminder/${item.id}`)} />)}</View>
       )}
-      {list && !list.isInbox && <Pressable onPress={removeList} style={styles.delete}><Text style={{ color: colors.danger, fontWeight: '700' }}>Delete List</Text><Text style={{ color: colors.secondaryText, fontSize: 12 }}>Reminders will move to Inbox.</Text></Pressable>}
+      {undoID && <View style={[styles.undo, { backgroundColor: colors.text }]}><Text style={{ color: colors.background, flex: 1 }}>Reminder completed</Text><Pressable onPress={() => { void toggleReminder(undoID, false); setUndoID(null); }}><Text style={{ color: colors.brand, fontWeight: '800' }}>Undo</Text></Pressable></View>}
+      {list && !list.isInbox && <Pressable onPress={confirmRemoveList} style={styles.delete}><Text style={{ color: colors.danger, fontWeight: '700' }}>Delete List</Text><Text style={{ color: colors.secondaryText, fontSize: 12 }}>Reminders will move to Inbox.</Text></Pressable>}
       {id !== 'completed' && <Pressable onPress={() => router.push({ pathname: '/reminder/new', params: { listId: smart ? undefined : id } })} style={[styles.add, { backgroundColor: colors.accent }]}><Ionicons name="add" size={22} color="white" /><Text style={styles.addText}>New Reminder</Text></Pressable>}
     </Screen>
   );
 }
-const styles = StyleSheet.create({ toggle: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, marginBottom: 12 }, list: { borderRadius: 17, paddingHorizontal: 14, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' }, add: { height: 52, borderRadius: 16, marginTop: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }, addText: { color: 'white', fontSize: 16, fontWeight: '800' }, delete: { alignItems: 'center', padding: 20, gap: 3 } });
-
+const styles = StyleSheet.create({ toggle: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, marginBottom: 12 }, list: { borderRadius: 17, paddingHorizontal: 14, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' }, add: { height: 52, borderRadius: 16, marginTop: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }, addText: { color: 'white', fontSize: 16, fontWeight: '800' }, delete: { alignItems: 'center', padding: 20, gap: 3 }, undo: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 14, marginTop: 12 } });

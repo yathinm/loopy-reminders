@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { LoopyMascot } from '@/components/LoopyMascot';
+import { WelcomeSheet } from '@/components/WelcomeSheet';
 import { Screen } from '@/components/Screen';
 import { filterSmartList } from '@/domain/filters';
 import { SmartList } from '@/domain/types';
@@ -19,10 +20,11 @@ const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.gl
 
 export default function HomeScreen() {
   const router = useRouter(); const colors = colorsFor(useColorScheme());
-  const { reminders, lists, loading, error } = useReminders();
+  const { reminders, lists, loading, error, onboardingComplete, completeOnboarding } = useReminders();
   if (loading) return <View style={[styles.center, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.accent} /></View>;
   return (
     <Screen>
+      <WelcomeSheet visible={!onboardingComplete} onFinish={completeOnboarding} />
       <View style={[styles.hero, { backgroundColor: colors.softBrand }]}>
         <View style={styles.heroCopy}><Text style={[styles.greeting, { color: colors.text }]}>Hi, I’m Loopy!</Text><Text style={[styles.subheading, { color: colors.secondaryText }]}>{reminders.some((r) => !r.isCompleted) ? 'Let’s make today feel lighter.' : 'You’re all caught up. Nice work!'}</Text></View>
         <LoopyMascot size={92} mood={reminders.some((r) => !r.isCompleted) ? 'happy' : 'calm'} />
@@ -64,4 +66,3 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: 18 }, secondaryButton: { flex: 1, height: 46, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center' }, buttonText: { fontWeight: '700' },
   addButton: { minHeight: 54, borderRadius: 17, marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }, addText: { color: 'white', fontSize: 17, fontWeight: '800' },
 });
-
