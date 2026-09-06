@@ -114,6 +114,10 @@ function scheduleTimer(entry) {
       console.warn('Desktop notifications are unavailable; showing Loopy instead.');
       showWindow();
     }
+    // macOS can silently suppress notifications from unsigned local builds.
+    // Always surface the due reminder in the app so it cannot be missed.
+    showWindow();
+    mainWindow?.webContents.send('loopy:notification-due', entry.reminderId);
     if (process.platform === 'darwin' && app.dock) app.dock.bounce('critical');
     return;
   }
