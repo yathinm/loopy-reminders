@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { Alert, Animated, PanResponder, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { Reminder } from '@/domain/types';
 import { colorsFor, spacing } from '@/theme/theme';
@@ -9,6 +10,7 @@ export function ReminderRow({ reminder, onToggle, onPress, onFlag, onDelete }: {
   const setOpenState = (value: boolean) => { openRef.current = value; setOpen(value); };
   const due = reminder.dueAt ? new Date(reminder.dueAt) : null; const overdue = due && !reminder.isCompleted && due.getTime() < renderedAt;
   const close = () => Animated.spring(offset, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start(() => setOpenState(false));
+  useFocusEffect(useCallback(() => { openRef.current = false; offset.setValue(0); setOpen(false); }, [offset]));
   const panResponder = useRef(PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,
     onMoveShouldSetPanResponderCapture: (_, gesture) => Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,
