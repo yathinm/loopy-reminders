@@ -50,8 +50,6 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   }, [db]);
 
   useEffect(() => {
-    // The database is the source of truth; hydrate once after the provider mounts.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [refresh]);
 
