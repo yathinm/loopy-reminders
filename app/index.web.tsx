@@ -11,7 +11,6 @@ import { colorsFor, palette } from '@/theme/theme';
 
 type Selection = { kind: 'smart'; id: SmartList } | { kind: 'list'; id: string } | { kind: 'deleted' };
 type ContextMenuState = { listId: string; x: number; y: number } | null;
-type SortMode = 'due' | 'title' | 'manual';
 type Colors = ReturnType<typeof colorsFor>;
 type PointerCoordinates = { pageX?: number; pageY?: number; clientX?: number; clientY?: number };
 type WebContextMenuEvent = PointerCoordinates & {
@@ -24,15 +23,11 @@ type DesktopContextMenuProps = {
   x: number;
   y: number;
   colors: Colors;
-  submenu: 'sort' | null;
   isPinned: boolean;
   showingCompleted: boolean;
-  sortMode: SortMode;
   onClose: () => void;
-  onSubmenu: (submenu: 'sort' | null) => void;
   onPin: () => void;
   onCompleted: () => void;
-  onSort: (mode: SortMode) => void;
   onRename: () => void;
   onDelete: () => void;
 };
@@ -71,14 +66,11 @@ export default function DesktopHomeScreen() {
   const [selection, setSelection] = useState<Selection>({ kind: 'smart', id: 'today' });
   const [query, setQuery] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
-  const [submenu, setSubmenu] = useState<'sort' | null>(null);
   const [pinnedLists, setPinnedLists] = useState<string[]>(() => readDesktopStorage('loopy:pinned-lists', []));
   const [showCompletedLists, setShowCompletedLists] = useState<string[]>(() => readDesktopStorage('loopy:show-completed-lists', []));
-  const [sortMode, setSortMode] = useState<SortMode>(() => readDesktopStorage('loopy:sort-mode', 'due'));
 
   useEffect(() => writeDesktopStorage('loopy:pinned-lists', pinnedLists), [pinnedLists]);
   useEffect(() => writeDesktopStorage('loopy:show-completed-lists', showCompletedLists), [showCompletedLists]);
-  useEffect(() => writeDesktopStorage('loopy:sort-mode', sortMode), [sortMode]);
 
   const selectedList = selection.kind === 'list' ? lists.find((list) => list.id === selection.id) : undefined;
   const title = query.trim()
@@ -92,12 +84,12 @@ export default function DesktopHomeScreen() {
   const visibleReminders = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     if (needle) {
-      return sortDesktopReminders(reminders.filter((item) => matchesReminderQuery(item, needle)), sortMode);
+      return sortReminders(reminders.filter((item) => matchesReminderQuery(item, needle)));
     }
     if (selection.kind === 'smart') return sortReminders(filterSmartList(reminders, selection.id));
-    if (selection.kind === 'list') return sortDesktopReminders(reminders.filter((item) => item.listId === selection.id && (showCompletedLists.includes(selection.id) || !item.isCompleted)), sortMode);
+    if (selection.kind === 'list') return sortReminders(reminders.filter((item) => item.listId === selection.id && (showCompletedLists.includes(selection.id) || !item.isCompleted)));
     return [];
-  }, [query, reminders, selection, showCompletedLists, sortMode]);
+  }, [query, reminders, selection, showCompletedLists]);
 
   const orderedLists = useMemo(() => [...lists].sort((a, b) => {
     const aPinned = pinnedLists.indexOf(a.id); const bPinned = pinnedLists.indexOf(b.id);
@@ -114,17 +106,15 @@ export default function DesktopHomeScreen() {
     setQuery('');
     setSelection(next);
     setContextMenu(null);
-    setSubmenu(null);
   }
 
   function openContextMenu(event: WebContextMenuEvent, listId: string) {
     event.preventDefault?.();
     const native = event.nativeEvent ?? event;
     setContextMenu({ listId, x: native.pageX ?? native.clientX ?? 160, y: native.pageY ?? native.clientY ?? 160 });
-    setSubmenu(null);
   }
 
-  function closeContextMenu() { setContextMenu(null); setSubmenu(null); }
+  function closeContextMenu() { setContextMenu(null); }
 
   async function deleteSelectedList(listId: string) {
     const list = lists.find((item) => item.id === listId); if (!list || list.isInbox) return;
@@ -243,15 +233,11 @@ export default function DesktopHomeScreen() {
         x={contextMenu.x}
         y={contextMenu.y}
         colors={colors}
-        submenu={submenu}
         isPinned={pinnedLists.includes(contextMenu.listId)}
         showingCompleted={showCompletedLists.includes(contextMenu.listId)}
-        sortMode={sortMode}
         onClose={closeContextMenu}
-        onSubmenu={setSubmenu}
         onPin={() => { setPinnedLists((current) => current.includes(contextMenu.listId) ? current.filter((id) => id !== contextMenu.listId) : [contextMenu.listId, ...current]); closeContextMenu(); }}
         onCompleted={() => { setShowCompletedLists((current) => current.includes(contextMenu.listId) ? current.filter((id) => id !== contextMenu.listId) : [...current, contextMenu.listId]); closeContextMenu(); }}
-        onSort={(mode: SortMode) => { setSortMode(mode); closeContextMenu(); }}
         onRename={() => { closeContextMenu(); router.push({ pathname: '/list-editor', params: { id: contextMenu.listId } }); }}
         onDelete={() => void deleteSelectedList(contextMenu.listId)}
       />}
@@ -259,7 +245,7 @@ export default function DesktopHomeScreen() {
   );
 }
 
-function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingCompleted, sortMode, onClose, onSubmenu, onPin, onCompleted, onSort, onRename, onDelete }: DesktopContextMenuProps) {
+function DesktopContextMenu({ list, x, y, colors, isPinned, showingCompleted, onClose, onPin, onCompleted, onRename, onDelete }: DesktopContextMenuProps) {
   if (!list) return null;
   const left = Math.max(8, Math.min(x, (typeof window !== 'undefined' ? window.innerWidth : 900) - 300));
   const top = Math.max(8, Math.min(y, (typeof window !== 'undefined' ? window.innerHeight : 700) - 510));
@@ -268,13 +254,6 @@ function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingComp
     <View style={[styles.contextMenu, { left, top, backgroundColor: colors.surface, borderColor: colors.border }]}>
       <MenuItem label={isPinned ? 'Unpin List' : 'Pin List'} colors={colors} onPress={onPin} />
       <MenuItem label={showingCompleted ? 'Hide Completed' : 'Show Completed'} colors={colors} shortcut="⇧⌘H" onPress={onCompleted} />
-      <MenuDivider colors={colors} />
-      <MenuItem label="Sort By" colors={colors} arrow onPress={() => onSubmenu(submenu === 'sort' ? null : 'sort')} />
-      {submenu === 'sort' && <View style={[styles.submenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <MenuItem label="Due Date" colors={colors} selected={sortMode === 'due'} onPress={() => onSort('due')} />
-        <MenuItem label="Title" colors={colors} selected={sortMode === 'title'} onPress={() => onSort('title')} />
-        <MenuItem label="Manual" colors={colors} selected={sortMode === 'manual'} onPress={() => onSort('manual')} />
-      </View>}
       <MenuDivider colors={colors} />
       <MenuItem label="Edit" colors={colors} onPress={onRename} />
       <MenuItem label="Delete" colors={colors} onPress={onDelete} disabled={list.isInbox} />
@@ -322,12 +301,6 @@ function formatDue(reminder: Reminder) {
   return reminder.hasTime ? `${dateText}, ${new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(date)}` : dateText;
 }
 
-function sortDesktopReminders(items: Reminder[], mode: SortMode) {
-  if (mode === 'title') return [...items].sort((a, b) => a.title.localeCompare(b.title));
-  if (mode === 'manual') return [...items].sort((a, b) => a.sortOrder - b.sortOrder);
-  return sortReminders(items);
-}
-
 const styles = StyleSheet.create({
   desktop: { flex: 1, flexDirection: 'row' },
   sidebar: { width: '34%', minWidth: 320, maxWidth: 420, borderRightWidth: StyleSheet.hairlineWidth },
@@ -368,5 +341,4 @@ const styles = StyleSheet.create({
   menuLabel: { flex: 1, fontSize: 16, fontWeight: '600' },
   menuShortcut: { fontSize: 13 },
   menuDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 12, marginVertical: 5 },
-  submenu: { position: 'absolute', left: 286, top: 185, width: 170, borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, paddingVertical: 8, zIndex: 22, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 14, shadowOffset: { width: 0, height: 7 } } as never,
 });
