@@ -357,7 +357,6 @@ function NotesPane({ notes, onOpen, onDelete }: { notes: Note[]; onOpen: (note: 
         <Pressable key={note.id} onPress={() => onOpen(note)} style={({ pressed }) => [styles.noteCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}>
           <View style={styles.noteCopy}>
             <Text numberOfLines={1} style={[styles.noteTitle, { color: colors.text }]}>{note.title}</Text>
-            {!!note.body && <Text numberOfLines={5} style={[styles.noteBody, { color: colors.secondaryText }]}>{note.body}</Text>}
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${note.title}`} hitSlop={10} onPress={(event) => { event.stopPropagation(); onDelete(note); }} style={styles.noteDelete}>
             <Ionicons name="trash-outline" size={19} color={colors.danger} />
@@ -402,11 +401,10 @@ const styles = StyleSheet.create({
   addReminder: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   workspaceContent: { paddingHorizontal: 28, paddingBottom: 40 },
   reminderList: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, overflow: 'hidden' },
-  noteGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  noteCard: { width: '48%', minHeight: 150, flexGrow: 1, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 18, flexDirection: 'row', gap: 10 },
-  noteCopy: { flex: 1, gap: 8 },
+  noteGrid: { gap: 10 },
+  noteCard: { minHeight: 72, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  noteCopy: { flex: 1 },
   noteTitle: { fontSize: 18, fontWeight: '800' },
-  noteBody: { fontSize: 15, lineHeight: 21 },
   noteDelete: { alignSelf: 'flex-start', padding: 4 },
   deletedDescription: { fontSize: 16, lineHeight: 23, marginBottom: 20 },
   deletedRows: { gap: 10 },

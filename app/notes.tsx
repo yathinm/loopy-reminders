@@ -30,7 +30,6 @@ export default function NotesScreen() {
           <Pressable key={note.id} onPress={() => router.push(`/note/${note.id}`)} style={({ pressed }) => [styles.note, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}>
             <View style={styles.noteCopy}>
               <Text numberOfLines={1} style={[styles.noteTitle, { color: colors.text }]}>{note.title}</Text>
-              {!!note.body && <Text numberOfLines={3} style={[styles.noteBody, { color: colors.secondaryText }]}>{note.body}</Text>}
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${note.title}`} hitSlop={10} onPress={(event) => { event.stopPropagation(); confirmDelete(note); }} style={styles.deleteButton}>
               <Ionicons name="trash-outline" size={20} color={colors.danger} />
@@ -48,10 +47,9 @@ export default function NotesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 16, paddingBottom: 100, gap: 10 },
-  note: { minHeight: 94, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  noteCopy: { flex: 1, gap: 6 },
+  note: { minHeight: 68, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  noteCopy: { flex: 1 },
   noteTitle: { fontSize: 18, fontWeight: '800' },
-  noteBody: { fontSize: 15, lineHeight: 21 },
   deleteButton: { padding: 6 },
   fab: { position: 'absolute', right: 16, bottom: 18, width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center' },
 });
