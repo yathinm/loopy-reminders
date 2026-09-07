@@ -3,6 +3,7 @@ import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
 import { EmptyState } from '@/components/EmptyState';
+import { LoopyMascot } from '@/components/LoopyMascot';
 import { ReminderRow } from '@/components/ReminderRow';
 import { filterSmartList, matchesReminderQuery, sortReminders } from '@/domain/filters';
 import { Reminder, ReminderList, SmartList } from '@/domain/types';
@@ -134,7 +135,7 @@ export default function DesktopHomeScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={[styles.sidebar, { backgroundColor: colors.surface, borderRightColor: colors.border }]}> 
         <View style={styles.sidebarTop}>
-          <Text style={[styles.brand, { color: colors.accent }]}>Loopy Reminders</Text>
+          <View style={styles.brandRow}><Text style={[styles.brand, { color: colors.accent }]}>Loopy Reminders</Text><LoopyMascot variant="driving" size={58} /></View>
           <View style={[styles.search, { backgroundColor: colors.background, borderColor: colors.border }]}> 
             <Ionicons name="search" size={20} color={colors.accent} />
             <TextInput
@@ -305,6 +306,7 @@ const styles = StyleSheet.create({
   desktop: { flex: 1, flexDirection: 'row' },
   sidebar: { width: '34%', minWidth: 320, maxWidth: 420, borderRightWidth: StyleSheet.hairlineWidth },
   sidebarTop: { paddingHorizontal: 18, paddingTop: 68, paddingBottom: 14, gap: 22 },
+  brandRow: { minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { fontSize: 22, fontWeight: '900' },
   search: { height: 46, borderWidth: StyleSheet.hairlineWidth, borderRadius: 13, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 9 },
   searchInput: { flex: 1, fontSize: 16, outlineStyle: 'none' } as never,
