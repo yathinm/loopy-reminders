@@ -12,8 +12,8 @@ export function ReminderRow({ reminder, onToggle, onPress, onFlag, onDelete }: {
   const close = () => Animated.spring(offset, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start(() => setOpenState(false));
   useFocusEffect(useCallback(() => { openRef.current = false; offset.setValue(0); }, [offset]));
   const panResponder = useRef(PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,
-    onMoveShouldSetPanResponderCapture: (_, gesture) => Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,
+    onMoveShouldSetPanResponder: (_, gesture) => gesture.numberActiveTouches >= 2 && Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,
+    onMoveShouldSetPanResponderCapture: (_, gesture) => gesture.numberActiveTouches >= 2 && Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 8,
     onPanResponderTerminationRequest: () => false,
     onPanResponderMove: (_, gesture) => offset.setValue(Math.max(-210, Math.min(0, gesture.dx + (openRef.current ? -210 : 0)))),
     onPanResponderRelease: (_, gesture) => { const shouldOpen = openRef.current ? gesture.dx <= -80 : gesture.dx < -80; Animated.spring(offset, { toValue: shouldOpen ? -210 : 0, useNativeDriver: true, bounciness: 0 }).start(() => setOpenState(shouldOpen)); },
