@@ -5,13 +5,14 @@ import { useSQLiteContext } from 'expo-sqlite';
 import React, { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { advanceRule, nextOccurrence } from '@/domain/recurrence';
 import { Reminder, ReminderDraft, ReminderList } from '@/domain/types';
-import { fetchLists, fetchReminders, INBOX_ID, removeOrphanedTags } from '@/data/database';
+import { fetchAppSetting, fetchLists, fetchReminders, INBOX_ID, removeOrphanedTags, saveAppSetting } from '@/data/database';
 import { addNotificationResponseListener, cancelReminderNotification, COMPLETE_ACTION, configureNotifications, getScheduledNotificationIds, scheduleReminderNotification, snoozeNotification, SNOOZE_ACTION } from '@/services/notifications';
 
 type ReminderContextValue = {
   reminders: Reminder[];
   deletedReminders: Reminder[];
   lists: ReminderList[];
+  notepad: string;
   loading: boolean;
   error: string | null;
   saveReminder: (draft: ReminderDraft, id?: string) => Promise<string>;
@@ -23,6 +24,7 @@ type ReminderContextValue = {
   createList: (name: string, color: string, symbol: string) => Promise<string>;
   updateList: (id: string, name: string, color: string, symbol: string) => Promise<void>;
   deleteList: (id: string) => Promise<void>;
+  saveNotepad: (content: string) => Promise<void>;
 };
 
 const ReminderContext = createContext<ReminderContextValue | null>(null);
@@ -33,6 +35,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [deletedReminders, setDeletedReminders] = useState<Reminder[]>([]);
   const [lists, setLists] = useState<ReminderList[]>([]);
+  const [notepad, setNotepad] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,10 +43,10 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     try {
       await db.runAsync("DELETE FROM reminders WHERE deleted_at IS NOT NULL AND deleted_at <= datetime('now', '-30 days')");
       await removeOrphanedTags(db);
-      const [nextReminders, nextDeletedReminders, nextLists] = await Promise.all([
-        fetchReminders(db), fetchReminders(db, true), fetchLists(db),
+      const [nextReminders, nextDeletedReminders, nextLists, nextNotepad] = await Promise.all([
+        fetchReminders(db), fetchReminders(db, true), fetchLists(db), fetchAppSetting(db, 'notepad'),
       ]);
-      setReminders(nextReminders); setDeletedReminders(nextDeletedReminders); setLists(nextLists); setError(null);
+      setReminders(nextReminders); setDeletedReminders(nextDeletedReminders); setLists(nextLists); setNotepad(nextNotepad); setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to load reminders.');
     } finally { setLoading(false); }
@@ -218,7 +221,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     await refresh();
   }, [db, refresh]);
 
-  const value = useMemo(() => ({ reminders, deletedReminders, lists, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList }), [reminders, deletedReminders, lists, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList]);
+  const saveNotepad = useCallback(async (content: string) => {
+    setNotepad(content);
+    await saveAppSetting(db, 'notepad', content);
+  }, [db]);
+
+  const value = useMemo(() => ({ reminders, deletedReminders, lists, notepad, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, saveNotepad }), [reminders, deletedReminders, lists, notepad, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, saveNotepad]);
   return <ReminderContext.Provider value={value}>{children}</ReminderContext.Provider>;
 }
 

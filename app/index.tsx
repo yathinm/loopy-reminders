@@ -42,6 +42,14 @@ export default function HomeScreen() {
           </Pressable>
         ))}
         </View>
+        <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>Notes</Text></View>
+        <View style={[styles.listBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/notes')} style={styles.listRow}>
+            <View style={[styles.listIcon, { backgroundColor: colors.brand }]}><Ionicons name="document-text-outline" size={18} color={colors.onColor} /></View>
+            <Text style={[styles.listName, { color: colors.text }]}>Notepad</Text>
+            <Ionicons name="chevron-forward" size={17} color={colors.secondaryText} />
+          </Pressable>
+        </View>
         <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>My Lists</Text></View>
         <View style={[styles.listBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         {lists.map((list, index) => (

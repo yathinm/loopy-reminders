@@ -10,7 +10,7 @@ import { Reminder, ReminderList, SmartList } from '@/domain/types';
 import { useReminders } from '@/store/ReminderProvider';
 import { colorsFor, palette } from '@/theme/theme';
 
-type Selection = { kind: 'smart'; id: SmartList } | { kind: 'list'; id: string } | { kind: 'deleted' };
+type Selection = { kind: 'smart'; id: SmartList } | { kind: 'list'; id: string } | { kind: 'notes' } | { kind: 'deleted' };
 type ContextMenuState = { listId: string; x: number; y: number } | null;
 type Colors = ReturnType<typeof colorsFor>;
 const CONTEXT_MENU_WIDTH = 292;
@@ -66,7 +66,7 @@ const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.gl
 export default function DesktopHomeScreen() {
   const router = useRouter();
   const colors = colorsFor(useColorScheme());
-  const { reminders, deletedReminders, lists, toggleReminder, toggleFlag, deleteReminder, restoreReminder, permanentlyDeleteReminder, deleteList } = useReminders();
+  const { reminders, deletedReminders, lists, notepad, toggleReminder, toggleFlag, deleteReminder, restoreReminder, permanentlyDeleteReminder, deleteList, saveNotepad } = useReminders();
   const [selection, setSelection] = useState<Selection>({ kind: 'smart', id: 'today' });
   const [query, setQuery] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
@@ -79,7 +79,9 @@ export default function DesktopHomeScreen() {
   const selectedList = selection.kind === 'list' ? lists.find((list) => list.id === selection.id) : undefined;
   const title = query.trim()
     ? 'Search'
-    : selection.kind === 'deleted'
+    : selection.kind === 'notes'
+      ? 'Notes'
+      : selection.kind === 'deleted'
       ? 'Recently Deleted'
       : selection.kind === 'smart'
         ? smartLists.find((item) => item.id === selection.id)?.title ?? 'Reminders'
@@ -103,7 +105,7 @@ export default function DesktopHomeScreen() {
     return aPinned - bPinned;
   }), [lists, pinnedLists]);
 
-  const canAddReminder = selection.kind !== 'deleted' && !(selection.kind === 'smart' && selection.id === 'completed');
+  const canAddReminder = selection.kind !== 'notes' && selection.kind !== 'deleted' && !(selection.kind === 'smart' && selection.id === 'completed');
   const newReminderParams = selection.kind === 'list' ? { listId: selection.id } : undefined;
 
   function choose(next: Selection) {
@@ -175,6 +177,14 @@ export default function DesktopHomeScreen() {
             })}
           </View>
 
+          <Text style={[styles.sectionTitle, { color: colors.secondaryText }]}>Notes</Text>
+          <View style={styles.listNavigation}>
+            <Pressable onPress={() => choose({ kind: 'notes' })} style={[styles.navRow, !query.trim() && selection.kind === 'notes' && { backgroundColor: colors.background }]}>
+              <View style={[styles.navIcon, { backgroundColor: colors.brand }]}><Ionicons name="document-text-outline" size={17} color={colors.onColor} /></View>
+              <Text style={[styles.navLabel, { color: colors.text }]}>Notepad</Text>
+            </Pressable>
+          </View>
+
           <Text style={[styles.sectionTitle, { color: colors.secondaryText }]}>My Lists</Text>
           <View style={styles.listNavigation}>
             {orderedLists.map((list) => {
@@ -215,7 +225,9 @@ export default function DesktopHomeScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.workspaceContent} showsVerticalScrollIndicator={false}>
-          {selection.kind === 'deleted' && !query.trim() ? (
+          {selection.kind === 'notes' && !query.trim() ? (
+            <NotesPane content={notepad} onChange={saveNotepad} />
+          ) : selection.kind === 'deleted' && !query.trim() ? (
             <DeletedPane reminders={deletedReminders} onRestore={restoreReminder} onDelete={confirmPermanentDelete} />
           ) : visibleReminders.length === 0 ? (
             <EmptyState title={query.trim() ? 'No matches' : selection.kind === 'smart' && selection.id === 'completed' ? 'Nothing completed yet' : 'Nothing here yet'} message={query.trim() ? 'Try another title, note, or tag.' : undefined} />
@@ -302,6 +314,22 @@ function DeletedPane({ reminders, onRestore, onDelete }: { reminders: Reminder[]
   );
 }
 
+function NotesPane({ content, onChange }: { content: string; onChange: (content: string) => Promise<void> }) {
+  const colors = colorsFor(useColorScheme());
+  return (
+    <TextInput
+      accessibilityLabel="Notepad"
+      multiline
+      value={content}
+      onChangeText={(nextContent) => void onChange(nextContent)}
+      placeholder="Write a note…"
+      placeholderTextColor={colors.secondaryText}
+      style={[styles.notepad, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+      textAlignVertical="top"
+    />
+  );
+}
+
 function formatDue(reminder: Reminder) {
   const date = new Date(reminder.dueAt!);
   const dateText = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
@@ -336,6 +364,7 @@ const styles = StyleSheet.create({
   addReminder: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   workspaceContent: { paddingHorizontal: 28, paddingBottom: 40 },
   reminderList: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, overflow: 'hidden' },
+  notepad: { minHeight: 460, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 20, fontSize: 17, lineHeight: 25, outlineStyle: 'none' } as never,
   deletedDescription: { fontSize: 16, lineHeight: 23, marginBottom: 20 },
   deletedRows: { gap: 10 },
   deletedRow: { minHeight: 82, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
