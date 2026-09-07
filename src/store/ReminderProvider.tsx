@@ -236,12 +236,12 @@ export function ReminderProvider({ children }: PropsWithChildren) {
       id,
       title.trim() || 'Untitled Note',
       body,
-      notes.find((note) => note.id === id)?.createdAt ?? now,
+      now,
       now,
     );
     await refresh();
     return id;
-  }, [db, notes, refresh]);
+  }, [db, refresh]);
 
   const deleteNote = useCallback(async (id: string) => {
     const now = new Date().toISOString();
