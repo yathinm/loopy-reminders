@@ -3,7 +3,6 @@ export {};
 declare global {
   interface Window {
     loopyDesktop?: {
-      openListWindow: (listId: string) => Promise<void>;
       notifications: {
         list: () => Promise<string[]>;
         schedule: (input: { id: string; reminderId: string; title: string; body: string; dueAt: number }) => Promise<string>;

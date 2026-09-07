@@ -32,7 +32,6 @@ type DesktopContextMenuProps = {
   onSubmenu: (submenu: 'sort' | null) => void;
   onPin: () => void;
   onCompleted: () => void;
-  onOpenWindow: () => void;
   onSort: (mode: SortMode) => void;
   onRename: () => void;
   onDelete: () => void;
@@ -252,7 +251,6 @@ export default function DesktopHomeScreen() {
         onSubmenu={setSubmenu}
         onPin={() => { setPinnedLists((current) => current.includes(contextMenu.listId) ? current.filter((id) => id !== contextMenu.listId) : [contextMenu.listId, ...current]); closeContextMenu(); }}
         onCompleted={() => { setShowCompletedLists((current) => current.includes(contextMenu.listId) ? current.filter((id) => id !== contextMenu.listId) : [...current, contextMenu.listId]); closeContextMenu(); }}
-        onOpenWindow={() => { void window.loopyDesktop?.openListWindow?.(contextMenu.listId); closeContextMenu(); }}
         onSort={(mode: SortMode) => { setSortMode(mode); closeContextMenu(); }}
         onRename={() => { closeContextMenu(); router.push({ pathname: '/list-editor', params: { id: contextMenu.listId } }); }}
         onDelete={() => void deleteSelectedList(contextMenu.listId)}
@@ -261,7 +259,7 @@ export default function DesktopHomeScreen() {
   );
 }
 
-function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingCompleted, sortMode, onClose, onSubmenu, onPin, onCompleted, onOpenWindow, onSort, onRename, onDelete }: DesktopContextMenuProps) {
+function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingCompleted, sortMode, onClose, onSubmenu, onPin, onCompleted, onSort, onRename, onDelete }: DesktopContextMenuProps) {
   if (!list) return null;
   const left = Math.max(8, Math.min(x, (typeof window !== 'undefined' ? window.innerWidth : 900) - 300));
   const top = Math.max(8, Math.min(y, (typeof window !== 'undefined' ? window.innerHeight : 700) - 510));
@@ -270,8 +268,6 @@ function DesktopContextMenu({ list, x, y, colors, submenu, isPinned, showingComp
     <View style={[styles.contextMenu, { left, top, backgroundColor: colors.surface, borderColor: colors.border }]}>
       <MenuItem label={isPinned ? 'Unpin List' : 'Pin List'} colors={colors} onPress={onPin} />
       <MenuItem label={showingCompleted ? 'Hide Completed' : 'Show Completed'} colors={colors} shortcut="⇧⌘H" onPress={onCompleted} />
-      <MenuDivider colors={colors} />
-      <MenuItem label="Open List in New Window" colors={colors} onPress={onOpenWindow} />
       <MenuDivider colors={colors} />
       <MenuItem label="Sort By" colors={colors} arrow onPress={() => onSubmenu(submenu === 'sort' ? null : 'sort')} />
       {submenu === 'sort' && <View style={[styles.submenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
