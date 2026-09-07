@@ -57,7 +57,8 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
       title TEXT NOT NULL,
       body TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      deleted_at TEXT
     );
     CREATE INDEX IF NOT EXISTS reminders_due_at_idx ON reminders(due_at);
     CREATE INDEX IF NOT EXISTS reminders_list_id_idx ON reminders(list_id);
@@ -93,6 +94,11 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
     now,
   );
   await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (5)');
+  const noteColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(notes)');
+  if (!noteColumns.some((column) => column.name === 'deleted_at')) {
+    await db.execAsync('ALTER TABLE notes ADD COLUMN deleted_at TEXT');
+  }
+  await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (6)');
 }
 
 type ListRow = {
@@ -136,11 +142,11 @@ export async function fetchReminders(db: SQLiteDatabase, includeDeleted = false)
   }));
 }
 
-export async function fetchNotes(db: SQLiteDatabase): Promise<Note[]> {
-  const rows = await db.getAllAsync<{ id: string; title: string; body: string; created_at: string; updated_at: string }>(
-    'SELECT id, title, body, created_at, updated_at FROM notes ORDER BY updated_at DESC',
+export async function fetchNotes(db: SQLiteDatabase, includeDeleted = false): Promise<Note[]> {
+  const rows = await db.getAllAsync<{ id: string; title: string; body: string; created_at: string; updated_at: string; deleted_at: string | null }>(
+    `SELECT id, title, body, created_at, updated_at, deleted_at FROM notes WHERE deleted_at ${includeDeleted ? 'IS NOT NULL' : 'IS NULL'} ORDER BY updated_at DESC`,
   );
-  return rows.map((row) => ({ id: row.id, title: row.title, body: row.body, createdAt: row.created_at, updatedAt: row.updated_at }));
+  return rows.map((row) => ({ id: row.id, title: row.title, body: row.body, createdAt: row.created_at, updatedAt: row.updated_at, deletedAt: row.deleted_at }));
 }
 
 function parseRecurrence(value: string | null): Reminder['recurrence'] {

@@ -24,6 +24,7 @@ export interface Note {
   body: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt: string | null;
 }
 
 export interface ReminderTag {

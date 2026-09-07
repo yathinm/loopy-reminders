@@ -32,10 +32,10 @@ export default function NoteEditorScreen() {
     if (!existing) return;
     const performDelete = async () => { await deleteNote(existing.id); router.back(); };
     if (Platform.OS === 'web') {
-      if (window.confirm(`Delete “${existing.title}”? This cannot be undone.`)) void performDelete();
+      if (window.confirm(`Delete “${existing.title}”? It will move to Recently Deleted.`)) void performDelete();
       return;
     }
-    Alert.alert('Delete note?', `“${existing.title}” will be permanently deleted.`, [
+    Alert.alert('Delete note?', `“${existing.title}” will move to Recently Deleted.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => void performDelete() },
     ]);

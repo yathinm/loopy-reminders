@@ -66,7 +66,7 @@ const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.gl
 export default function DesktopHomeScreen() {
   const router = useRouter();
   const colors = colorsFor(useColorScheme());
-  const { reminders, deletedReminders, lists, notes, toggleReminder, toggleFlag, deleteReminder, restoreReminder, permanentlyDeleteReminder, deleteList, deleteNote } = useReminders();
+  const { reminders, deletedReminders, lists, notes, deletedNotes, toggleReminder, toggleFlag, deleteReminder, restoreReminder, permanentlyDeleteReminder, deleteList, deleteNote, restoreNote, permanentlyDeleteNote } = useReminders();
   const [selection, setSelection] = useState<Selection>({ kind: 'smart', id: 'today' });
   const [query, setQuery] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
@@ -139,7 +139,11 @@ export default function DesktopHomeScreen() {
   }
 
   function confirmNoteDelete(note: Note) {
-    if (window.confirm(`Delete “${note.title}”? This cannot be undone.`)) void deleteNote(note.id);
+    if (window.confirm(`Delete “${note.title}”? It will move to Recently Deleted.`)) void deleteNote(note.id);
+  }
+
+  function confirmPermanentNoteDelete(note: Note) {
+    if (window.confirm(`Delete “${note.title}” permanently? This cannot be undone.`)) void permanentlyDeleteNote(note.id);
   }
 
   return (
@@ -205,7 +209,7 @@ export default function DesktopHomeScreen() {
             <Pressable onPress={() => choose({ kind: 'deleted' })} style={[styles.navRow, !query.trim() && selection.kind === 'deleted' && { backgroundColor: colors.background }]}> 
               <View style={[styles.navIcon, { backgroundColor: colors.brand }]}><Ionicons name="trash-outline" size={17} color={colors.onColor} /></View>
               <Text style={[styles.navLabel, { color: colors.text }]}>Recently Deleted</Text>
-              <Text style={{ color: colors.secondaryText }}>{deletedReminders.length}</Text>
+              <Text style={{ color: colors.secondaryText }}>{deletedReminders.length + deletedNotes.length}</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -238,7 +242,7 @@ export default function DesktopHomeScreen() {
           {selection.kind === 'notes' && !query.trim() ? (
             <NotesPane notes={notes} onOpen={(note) => router.push(`/note/${note.id}`)} onDelete={confirmNoteDelete} />
           ) : selection.kind === 'deleted' && !query.trim() ? (
-            <DeletedPane reminders={deletedReminders} onRestore={restoreReminder} onDelete={confirmPermanentDelete} />
+            <DeletedPane reminders={deletedReminders} notes={deletedNotes} onRestoreReminder={restoreReminder} onDeleteReminder={confirmPermanentDelete} onRestoreNote={restoreNote} onDeleteNote={confirmPermanentNoteDelete} />
           ) : visibleReminders.length === 0 ? (
             <EmptyState title={query.trim() ? 'No matches' : selection.kind === 'smart' && selection.id === 'completed' ? 'Nothing completed yet' : 'Nothing here yet'} message={query.trim() ? 'Try another title, note, or tag.' : undefined} />
           ) : (
@@ -302,12 +306,21 @@ function MenuDivider({ colors }: { colors: ReturnType<typeof colorsFor> }) {
   return <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />;
 }
 
-function DeletedPane({ reminders, onRestore, onDelete }: { reminders: Reminder[]; onRestore: (id: string) => Promise<void>; onDelete: (reminder: Reminder) => void }) {
+type DeletedPaneProps = {
+  reminders: Reminder[];
+  notes: Note[];
+  onRestoreReminder: (id: string) => Promise<void>;
+  onDeleteReminder: (reminder: Reminder) => void;
+  onRestoreNote: (id: string) => Promise<void>;
+  onDeleteNote: (note: Note) => void;
+};
+
+function DeletedPane({ reminders, notes, onRestoreReminder, onDeleteReminder, onRestoreNote, onDeleteNote }: DeletedPaneProps) {
   const colors = colorsFor(useColorScheme());
-  if (reminders.length === 0) return <EmptyState title="Recently Deleted is empty" message="Deleted reminders will appear here for 30 days." />;
+  if (reminders.length === 0 && notes.length === 0) return <EmptyState title="Recently Deleted is empty" message="Deleted reminders and notes will appear here for 30 days." />;
   return (
     <View>
-      <Text style={[styles.deletedDescription, { color: colors.secondaryText }]}>Reminders remain available for 30 days before they are permanently deleted.</Text>
+      <Text style={[styles.deletedDescription, { color: colors.secondaryText }]}>Reminders and notes remain available for 30 days before they are permanently deleted.</Text>
       <View style={styles.deletedRows}>{reminders.map((reminder) => (
         <View key={reminder.id} style={[styles.deletedRow, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
           <View style={[styles.deletedCircle, { borderColor: colors.brand }]} />
@@ -316,8 +329,19 @@ function DeletedPane({ reminders, onRestore, onDelete }: { reminders: Reminder[]
             {!!reminder.notes && <Text numberOfLines={2} style={{ color: colors.secondaryText }}>{reminder.notes}</Text>}
             {reminder.dueAt && <Text style={{ color: colors.danger }}>{formatDue(reminder)}</Text>}
           </View>
-          <Pressable onPress={() => void onRestore(reminder.id)}><Text style={[styles.deletedAction, { color: colors.accent }]}>Restore</Text></Pressable>
-          <Pressable onPress={() => onDelete(reminder)}><Text style={[styles.deletedAction, { color: colors.danger }]}>Delete</Text></Pressable>
+          <Pressable onPress={() => void onRestoreReminder(reminder.id)}><Text style={[styles.deletedAction, { color: colors.accent }]}>Restore</Text></Pressable>
+          <Pressable onPress={() => onDeleteReminder(reminder)}><Text style={[styles.deletedAction, { color: colors.danger }]}>Delete</Text></Pressable>
+        </View>
+      ))}
+      {notes.map((note) => (
+        <View key={note.id} style={[styles.deletedRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.deletedNoteIcon, { backgroundColor: colors.brand }]}><Ionicons name="document-text-outline" size={17} color={colors.onColor} /></View>
+          <View style={styles.deletedBody}>
+            <Text style={[styles.deletedTitle, { color: colors.text }]}>{note.title}</Text>
+            {!!note.body && <Text numberOfLines={2} style={{ color: colors.secondaryText }}>{note.body}</Text>}
+          </View>
+          <Pressable onPress={() => void onRestoreNote(note.id)}><Text style={[styles.deletedAction, { color: colors.accent }]}>Restore</Text></Pressable>
+          <Pressable onPress={() => onDeleteNote(note)}><Text style={[styles.deletedAction, { color: colors.danger }]}>Delete</Text></Pressable>
         </View>
       ))}</View>
     </View>
@@ -388,6 +412,7 @@ const styles = StyleSheet.create({
   deletedRows: { gap: 10 },
   deletedRow: { minHeight: 82, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   deletedCircle: { width: 25, height: 25, borderRadius: 13, borderWidth: 2 },
+  deletedNoteIcon: { width: 27, height: 27, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   deletedBody: { flex: 1, gap: 3 },
   deletedTitle: { fontSize: 17, fontWeight: '700' },
   deletedAction: { fontSize: 14, fontWeight: '800', padding: 5 },

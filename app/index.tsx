@@ -19,7 +19,7 @@ const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.gl
 
 export default function HomeScreen() {
   const router = useRouter(); const colors = colorsFor(useColorScheme());
-  const { reminders, deletedReminders, lists, notes, error } = useReminders();
+  const { reminders, deletedReminders, lists, notes, deletedNotes, error } = useReminders();
   return (
     <Screen scroll={false}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -61,10 +61,10 @@ export default function HomeScreen() {
             <Ionicons name="chevron-forward" size={17} color={colors.secondaryText} />
           </Pressable>
         ))}
-        <Pressable onPress={() => router.push('/recently-deleted')} style={[styles.listRow, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]} accessibilityRole="button" accessibilityLabel={`Recently Deleted, ${deletedReminders.length} reminders`}>
+        <Pressable onPress={() => router.push('/recently-deleted')} style={[styles.listRow, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]} accessibilityRole="button" accessibilityLabel={`Recently Deleted, ${deletedReminders.length + deletedNotes.length} items`}>
           <View style={[styles.listIcon, { backgroundColor: colors.softBrand }]}><Ionicons name="trash-outline" size={18} color={colors.accent} /></View>
           <Text style={[styles.listName, { color: colors.text }]}>Recently Deleted</Text>
-          <Text style={{ color: colors.secondaryText }}>{deletedReminders.length}</Text>
+          <Text style={{ color: colors.secondaryText }}>{deletedReminders.length + deletedNotes.length}</Text>
           <Ionicons name="chevron-forward" size={17} color={colors.secondaryText} />
         </Pressable>
         </View>

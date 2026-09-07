@@ -14,10 +14,10 @@ export default function NotesScreen() {
 
   function confirmDelete(note: Note) {
     if (Platform.OS === 'web') {
-      if (window.confirm(`Delete “${note.title}”? This cannot be undone.`)) void deleteNote(note.id);
+      if (window.confirm(`Delete “${note.title}”? It will move to Recently Deleted.`)) void deleteNote(note.id);
       return;
     }
-    Alert.alert('Delete note?', `“${note.title}” will be permanently deleted.`, [
+    Alert.alert('Delete note?', `“${note.title}” will move to Recently Deleted.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => void deleteNote(note.id) },
     ]);

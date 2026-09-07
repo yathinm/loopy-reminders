@@ -13,6 +13,7 @@ type ReminderContextValue = {
   deletedReminders: Reminder[];
   lists: ReminderList[];
   notes: Note[];
+  deletedNotes: Note[];
   loading: boolean;
   error: string | null;
   saveReminder: (draft: ReminderDraft, id?: string) => Promise<string>;
@@ -26,6 +27,8 @@ type ReminderContextValue = {
   deleteList: (id: string) => Promise<void>;
   saveNote: (title: string, body: string, id?: string) => Promise<string>;
   deleteNote: (id: string) => Promise<void>;
+  restoreNote: (id: string) => Promise<void>;
+  permanentlyDeleteNote: (id: string) => Promise<void>;
 };
 
 const ReminderContext = createContext<ReminderContextValue | null>(null);
@@ -37,17 +40,19 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   const [deletedReminders, setDeletedReminders] = useState<Reminder[]>([]);
   const [lists, setLists] = useState<ReminderList[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [deletedNotes, setDeletedNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       await db.runAsync("DELETE FROM reminders WHERE deleted_at IS NOT NULL AND deleted_at <= datetime('now', '-30 days')");
+      await db.runAsync("DELETE FROM notes WHERE deleted_at IS NOT NULL AND deleted_at <= datetime('now', '-30 days')");
       await removeOrphanedTags(db);
-      const [nextReminders, nextDeletedReminders, nextLists, nextNotes] = await Promise.all([
-        fetchReminders(db), fetchReminders(db, true), fetchLists(db), fetchNotes(db),
+      const [nextReminders, nextDeletedReminders, nextLists, nextNotes, nextDeletedNotes] = await Promise.all([
+        fetchReminders(db), fetchReminders(db, true), fetchLists(db), fetchNotes(db), fetchNotes(db, true),
       ]);
-      setReminders(nextReminders); setDeletedReminders(nextDeletedReminders); setLists(nextLists); setNotes(nextNotes); setError(null);
+      setReminders(nextReminders); setDeletedReminders(nextDeletedReminders); setLists(nextLists); setNotes(nextNotes); setDeletedNotes(nextDeletedNotes); setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to load reminders.');
     } finally { setLoading(false); }
@@ -239,11 +244,22 @@ export function ReminderProvider({ children }: PropsWithChildren) {
   }, [db, notes, refresh]);
 
   const deleteNote = useCallback(async (id: string) => {
+    const now = new Date().toISOString();
+    await db.runAsync('UPDATE notes SET deleted_at = ?, updated_at = ? WHERE id = ?', now, now, id);
+    await refresh();
+  }, [db, refresh]);
+
+  const restoreNote = useCallback(async (id: string) => {
+    await db.runAsync('UPDATE notes SET deleted_at = NULL, updated_at = ? WHERE id = ?', new Date().toISOString(), id);
+    await refresh();
+  }, [db, refresh]);
+
+  const permanentlyDeleteNote = useCallback(async (id: string) => {
     await db.runAsync('DELETE FROM notes WHERE id = ?', id);
     await refresh();
   }, [db, refresh]);
 
-  const value = useMemo(() => ({ reminders, deletedReminders, lists, notes, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, saveNote, deleteNote }), [reminders, deletedReminders, lists, notes, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, saveNote, deleteNote]);
+  const value = useMemo(() => ({ reminders, deletedReminders, lists, notes, deletedNotes, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, saveNote, deleteNote, restoreNote, permanentlyDeleteNote }), [reminders, deletedReminders, lists, notes, deletedNotes, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, saveNote, deleteNote, restoreNote, permanentlyDeleteNote]);
   return <ReminderContext.Provider value={value}>{children}</ReminderContext.Provider>;
 }
 
