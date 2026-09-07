@@ -13,6 +13,9 @@ import { colorsFor, palette } from '@/theme/theme';
 type Selection = { kind: 'smart'; id: SmartList } | { kind: 'list'; id: string } | { kind: 'deleted' };
 type ContextMenuState = { listId: string; x: number; y: number } | null;
 type Colors = ReturnType<typeof colorsFor>;
+const CONTEXT_MENU_WIDTH = 292;
+const CONTEXT_MENU_HEIGHT = 196;
+const CONTEXT_MENU_GUTTER = 8;
 type PointerCoordinates = { pageX?: number; pageY?: number; clientX?: number; clientY?: number };
 type WebContextMenuEvent = PointerCoordinates & {
   preventDefault?: () => void;
@@ -111,8 +114,11 @@ export default function DesktopHomeScreen() {
 
   function openContextMenu(event: WebContextMenuEvent, listId: string) {
     event.preventDefault?.();
-    const native = event.nativeEvent ?? event;
-    setContextMenu({ listId, x: native.pageX ?? native.clientX ?? 160, y: native.pageY ?? native.clientY ?? 160 });
+    setContextMenu({
+      listId,
+      x: event.nativeEvent?.pageX ?? event.pageX ?? event.nativeEvent?.clientX ?? event.clientX ?? CONTEXT_MENU_GUTTER,
+      y: event.nativeEvent?.pageY ?? event.pageY ?? event.nativeEvent?.clientY ?? event.clientY ?? CONTEXT_MENU_GUTTER,
+    });
   }
 
   function closeContextMenu() { setContextMenu(null); }
@@ -248,8 +254,8 @@ export default function DesktopHomeScreen() {
 
 function DesktopContextMenu({ list, x, y, colors, isPinned, showingCompleted, onClose, onPin, onCompleted, onRename, onDelete }: DesktopContextMenuProps) {
   if (!list) return null;
-  const left = Math.max(8, Math.min(x, (typeof window !== 'undefined' ? window.innerWidth : 900) - 300));
-  const top = Math.max(8, Math.min(y, (typeof window !== 'undefined' ? window.innerHeight : 700) - 510));
+  const left = Math.max(CONTEXT_MENU_GUTTER, Math.min(x, (typeof window !== 'undefined' ? window.innerWidth : 900) - CONTEXT_MENU_WIDTH - CONTEXT_MENU_GUTTER));
+  const top = Math.max(CONTEXT_MENU_GUTTER, Math.min(y, (typeof window !== 'undefined' ? window.innerHeight : 700) - CONTEXT_MENU_HEIGHT - CONTEXT_MENU_GUTTER));
   return <>
     <Pressable onPress={onClose} style={styles.menuBackdrop} />
     <View style={[styles.contextMenu, { left, top, backgroundColor: colors.surface, borderColor: colors.border }]}>
