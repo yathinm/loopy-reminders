@@ -18,6 +18,14 @@ export interface ReminderList {
   isInbox: boolean;
 }
 
+export interface Note {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ReminderTag {
   id: string;
   name: string;

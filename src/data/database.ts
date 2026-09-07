@@ -1,5 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { Reminder, ReminderList, ReminderTag } from '@/domain/types';
+import { Note, Reminder, ReminderList, ReminderTag } from '@/domain/types';
 
 const INBOX_ID = '35a389b4-c524-48ac-ba7f-2dd4c7c49601';
 
@@ -52,6 +52,13 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
       key TEXT PRIMARY KEY NOT NULL,
       value TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS notes (
+      id TEXT PRIMARY KEY NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS reminders_due_at_idx ON reminders(due_at);
     CREATE INDEX IF NOT EXISTS reminders_list_id_idx ON reminders(list_id);
     CREATE INDEX IF NOT EXISTS reminders_completed_idx ON reminders(is_completed);
@@ -77,6 +84,15 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
     now, INBOX_ID,
   );
   await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (4)');
+  await db.runAsync(
+    `INSERT OR IGNORE INTO notes (id, title, body, created_at, updated_at)
+     SELECT 'legacy-notepad', 'My Note', value, ?, ? FROM app_settings
+     WHERE key = 'notepad' AND length(trim(value)) > 0
+       AND NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version = 5)`,
+    now,
+    now,
+  );
+  await db.runAsync('INSERT OR IGNORE INTO schema_migrations(version) VALUES (5)');
 }
 
 type ListRow = {
@@ -120,6 +136,13 @@ export async function fetchReminders(db: SQLiteDatabase, includeDeleted = false)
   }));
 }
 
+export async function fetchNotes(db: SQLiteDatabase): Promise<Note[]> {
+  const rows = await db.getAllAsync<{ id: string; title: string; body: string; created_at: string; updated_at: string }>(
+    'SELECT id, title, body, created_at, updated_at FROM notes ORDER BY updated_at DESC',
+  );
+  return rows.map((row) => ({ id: row.id, title: row.title, body: row.body, createdAt: row.created_at, updatedAt: row.updated_at }));
+}
+
 function parseRecurrence(value: string | null): Reminder['recurrence'] {
   if (!value) return null;
   try {
@@ -133,19 +156,6 @@ function parseRecurrence(value: string | null): Reminder['recurrence'] {
 
 export async function removeOrphanedTags(db: SQLiteDatabase): Promise<void> {
   await db.runAsync('DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM reminder_tags)');
-}
-
-export async function fetchAppSetting(db: SQLiteDatabase, key: string): Promise<string> {
-  const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM app_settings WHERE key = ?', key);
-  return row?.value ?? '';
-}
-
-export async function saveAppSetting(db: SQLiteDatabase, key: string, value: string): Promise<void> {
-  await db.runAsync(
-    'INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-    key,
-    value,
-  );
 }
 
 export { INBOX_ID };

@@ -19,7 +19,7 @@ const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.gl
 
 export default function HomeScreen() {
   const router = useRouter(); const colors = colorsFor(useColorScheme());
-  const { reminders, deletedReminders, lists, error } = useReminders();
+  const { reminders, deletedReminders, lists, notes, error } = useReminders();
   return (
     <Screen scroll={false}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -46,7 +46,8 @@ export default function HomeScreen() {
         <View style={[styles.listBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Pressable accessibilityRole="button" onPress={() => router.push('/notes')} style={styles.listRow}>
             <View style={[styles.listIcon, { backgroundColor: colors.brand }]}><Ionicons name="document-text-outline" size={18} color={colors.onColor} /></View>
-            <Text style={[styles.listName, { color: colors.text }]}>Notepad</Text>
+            <Text style={[styles.listName, { color: colors.text }]}>Notes</Text>
+            <Text style={{ color: colors.secondaryText }}>{notes.length}</Text>
             <Ionicons name="chevron-forward" size={17} color={colors.secondaryText} />
           </Pressable>
         </View>

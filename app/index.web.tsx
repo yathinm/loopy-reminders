@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { LoopyMascot } from '@/components/LoopyMascot';
 import { ReminderRow } from '@/components/ReminderRow';
 import { filterSmartList, matchesReminderQuery, sortReminders } from '@/domain/filters';
-import { Reminder, ReminderList, SmartList } from '@/domain/types';
+import { Note, Reminder, ReminderList, SmartList } from '@/domain/types';
 import { useReminders } from '@/store/ReminderProvider';
 import { colorsFor, palette } from '@/theme/theme';
 
@@ -66,7 +66,7 @@ const smartLists: { id: SmartList; title: string; icon: keyof typeof Ionicons.gl
 export default function DesktopHomeScreen() {
   const router = useRouter();
   const colors = colorsFor(useColorScheme());
-  const { reminders, deletedReminders, lists, notepad, toggleReminder, toggleFlag, deleteReminder, restoreReminder, permanentlyDeleteReminder, deleteList, saveNotepad } = useReminders();
+  const { reminders, deletedReminders, lists, notes, toggleReminder, toggleFlag, deleteReminder, restoreReminder, permanentlyDeleteReminder, deleteList, deleteNote } = useReminders();
   const [selection, setSelection] = useState<Selection>({ kind: 'smart', id: 'today' });
   const [query, setQuery] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
@@ -138,6 +138,10 @@ export default function DesktopHomeScreen() {
     if (window.confirm(`Delete “${reminder.title}” permanently? This cannot be undone.`)) void permanentlyDeleteReminder(reminder.id);
   }
 
+  function confirmNoteDelete(note: Note) {
+    if (window.confirm(`Delete “${note.title}”? This cannot be undone.`)) void deleteNote(note.id);
+  }
+
   return (
     <View style={[styles.desktop, { backgroundColor: colors.background }]}> 
       <Stack.Screen options={{ headerShown: false }} />
@@ -181,7 +185,8 @@ export default function DesktopHomeScreen() {
           <View style={styles.listNavigation}>
             <Pressable onPress={() => choose({ kind: 'notes' })} style={[styles.navRow, !query.trim() && selection.kind === 'notes' && { backgroundColor: colors.background }]}>
               <View style={[styles.navIcon, { backgroundColor: colors.brand }]}><Ionicons name="document-text-outline" size={17} color={colors.onColor} /></View>
-              <Text style={[styles.navLabel, { color: colors.text }]}>Notepad</Text>
+              <Text style={[styles.navLabel, { color: colors.text }]}>Notes</Text>
+              <Text style={{ color: colors.secondaryText }}>{notes.length}</Text>
             </Pressable>
           </View>
 
@@ -222,11 +227,16 @@ export default function DesktopHomeScreen() {
               <Ionicons name="add" size={27} color={colors.onColor} />
             </Pressable>
           )}
+          {selection.kind === 'notes' && !query.trim() && (
+            <Pressable accessibilityRole="button" accessibilityLabel="Add note" onPress={() => router.push('/note/new')} style={({ pressed }) => [styles.addReminder, { backgroundColor: colors.accent, opacity: pressed ? 0.75 : 1 }]}>
+              <Ionicons name="add" size={27} color={colors.onColor} />
+            </Pressable>
+          )}
         </View>
 
         <ScrollView contentContainerStyle={styles.workspaceContent} showsVerticalScrollIndicator={false}>
           {selection.kind === 'notes' && !query.trim() ? (
-            <NotesPane content={notepad} onChange={saveNotepad} />
+            <NotesPane notes={notes} onOpen={(note) => router.push(`/note/${note.id}`)} onDelete={confirmNoteDelete} />
           ) : selection.kind === 'deleted' && !query.trim() ? (
             <DeletedPane reminders={deletedReminders} onRestore={restoreReminder} onDelete={confirmPermanentDelete} />
           ) : visibleReminders.length === 0 ? (
@@ -314,19 +324,23 @@ function DeletedPane({ reminders, onRestore, onDelete }: { reminders: Reminder[]
   );
 }
 
-function NotesPane({ content, onChange }: { content: string; onChange: (content: string) => Promise<void> }) {
+function NotesPane({ notes, onOpen, onDelete }: { notes: Note[]; onOpen: (note: Note) => void; onDelete: (note: Note) => void }) {
   const colors = colorsFor(useColorScheme());
+  if (notes.length === 0) return <EmptyState title="No notes yet" message="Create a note whenever inspiration strikes." />;
   return (
-    <TextInput
-      accessibilityLabel="Notepad"
-      multiline
-      value={content}
-      onChangeText={(nextContent) => void onChange(nextContent)}
-      placeholder="Write a note…"
-      placeholderTextColor={colors.secondaryText}
-      style={[styles.notepad, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-      textAlignVertical="top"
-    />
+    <View style={styles.noteGrid}>
+      {notes.map((note) => (
+        <Pressable key={note.id} onPress={() => onOpen(note)} style={({ pressed }) => [styles.noteCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}>
+          <View style={styles.noteCopy}>
+            <Text numberOfLines={1} style={[styles.noteTitle, { color: colors.text }]}>{note.title}</Text>
+            {!!note.body && <Text numberOfLines={5} style={[styles.noteBody, { color: colors.secondaryText }]}>{note.body}</Text>}
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${note.title}`} hitSlop={10} onPress={(event) => { event.stopPropagation(); onDelete(note); }} style={styles.noteDelete}>
+            <Ionicons name="trash-outline" size={19} color={colors.danger} />
+          </Pressable>
+        </Pressable>
+      ))}
+    </View>
   );
 }
 
@@ -364,7 +378,12 @@ const styles = StyleSheet.create({
   addReminder: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   workspaceContent: { paddingHorizontal: 28, paddingBottom: 40 },
   reminderList: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, overflow: 'hidden' },
-  notepad: { minHeight: 460, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 20, fontSize: 17, lineHeight: 25, outlineStyle: 'none' } as never,
+  noteGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  noteCard: { width: '48%', minHeight: 150, flexGrow: 1, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 18, flexDirection: 'row', gap: 10 },
+  noteCopy: { flex: 1, gap: 8 },
+  noteTitle: { fontSize: 18, fontWeight: '800' },
+  noteBody: { fontSize: 15, lineHeight: 21 },
+  noteDelete: { alignSelf: 'flex-start', padding: 4 },
   deletedDescription: { fontSize: 16, lineHeight: 23, marginBottom: 20 },
   deletedRows: { gap: 10 },
   deletedRow: { minHeight: 82, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
