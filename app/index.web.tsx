@@ -40,9 +40,7 @@ type MenuItemProps = {
   label: string;
   colors: Colors;
   onPress: () => void;
-  arrow?: boolean;
   shortcut?: string;
-  selected?: boolean;
   disabled?: boolean;
 };
 
@@ -294,11 +292,10 @@ function DesktopContextMenu({ list, x, y, colors, isPinned, showingCompleted, on
   </>;
 }
 
-function MenuItem({ label, colors, onPress, arrow, shortcut, selected, disabled }: MenuItemProps) {
+function MenuItem({ label, colors, onPress, shortcut, disabled }: MenuItemProps) {
   return <Pressable disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.menuItem, { opacity: disabled ? 0.4 : pressed ? 0.65 : 1 }]}>
-    <Text style={[styles.menuLabel, { color: colors.text }]}>{selected ? '✓ ' : ''}{label}</Text>
+    <Text style={[styles.menuLabel, { color: colors.text }]}>{label}</Text>
     {shortcut && <Text style={[styles.menuShortcut, { color: colors.secondaryText }]}>{shortcut}</Text>}
-    {arrow && <Ionicons name="chevron-forward" size={17} color={colors.secondaryText} />}
   </Pressable>;
 }
 
