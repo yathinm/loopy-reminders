@@ -21,13 +21,6 @@ type WebContextMenuEvent = PointerCoordinates & {
   preventDefault?: () => void;
   nativeEvent?: PointerCoordinates;
 };
-type WebDragEvent = {
-  clientY: number;
-  preventDefault: () => void;
-  dataTransfer?: { effectAllowed: string; dropEffect: string; setData: (type: string, value: string) => void };
-  currentTarget: { getBoundingClientRect: () => { top: number; height: number } };
-};
-
 type DesktopContextMenuProps = {
   list?: ReminderList;
   x: number;
@@ -153,7 +146,7 @@ export default function DesktopHomeScreen() {
     if (window.confirm(`Delete “${note.title}” permanently? This cannot be undone.`)) void permanentlyDeleteNote(note.id);
   }
 
-  function dropReminder(event: WebDragEvent, targetId: string) {
+  function dropReminder(event: React.DragEvent<HTMLDivElement>, targetId: string) {
     event.preventDefault();
     const sourceId = draggedReminderId;
     setDraggedReminderId(null);
@@ -273,24 +266,28 @@ export default function DesktopHomeScreen() {
           ) : (
             <View style={[styles.reminderList, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
               {visibleReminders.map((reminder) => (
-                <View
+                <div
                   key={reminder.id}
-                  {...(canReorderReminders ? ({
-                    draggable: true,
-                    onDragStart: (event: WebDragEvent) => {
-                      event.dataTransfer?.setData('text/plain', reminder.id);
-                      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+                  draggable={canReorderReminders}
+                  onDragStart={canReorderReminders ? (event) => {
+                      event.dataTransfer.setData('text/plain', reminder.id);
+                      event.dataTransfer.effectAllowed = 'move';
                       setDraggedReminderId(reminder.id);
-                    },
-                    onDragOver: (event: WebDragEvent) => {
+                    } : undefined}
+                  onDragOver={canReorderReminders ? (event) => {
                       event.preventDefault();
-                      if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+                      event.dataTransfer.dropEffect = 'move';
                       setDragTargetId(reminder.id);
-                    },
-                    onDrop: (event: WebDragEvent) => dropReminder(event, reminder.id),
-                    onDragEnd: () => { setDraggedReminderId(null); setDragTargetId(null); },
-                  } as Record<string, unknown>) : {})}
-                  style={[styles.draggableReminder, draggedReminderId === reminder.id && styles.draggingReminder, dragTargetId === reminder.id && draggedReminderId !== reminder.id && [styles.dragTargetReminder, { outlineColor: colors.accent } as never]]}
+                    } : undefined}
+                  onDrop={canReorderReminders ? (event) => dropReminder(event, reminder.id) : undefined}
+                  onDragEnd={() => { setDraggedReminderId(null); setDragTargetId(null); }}
+                  style={{
+                    position: 'relative',
+                    cursor: canReorderReminders ? 'grab' : 'default',
+                    opacity: draggedReminderId === reminder.id ? 0.45 : 1,
+                    outline: dragTargetId === reminder.id && draggedReminderId !== reminder.id ? `2px solid ${colors.accent}` : 'none',
+                    outlineOffset: -2,
+                  }}
                 >
                   <ReminderRow
                     reminder={reminder}
@@ -300,7 +297,7 @@ export default function DesktopHomeScreen() {
                     onPress={() => router.push(`/reminder/${reminder.id}`)}
                   />
                   {canReorderReminders && <View pointerEvents="none" style={styles.dragHandle}><Ionicons name="reorder-three" size={21} color={colors.secondaryText} /></View>}
-                </View>
+                </div>
               ))}
             </View>
           )}
@@ -445,9 +442,6 @@ const styles = StyleSheet.create({
   addReminder: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   workspaceContent: { paddingHorizontal: 28, paddingBottom: 40 },
   reminderList: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, overflow: 'hidden' },
-  draggableReminder: { position: 'relative', cursor: 'grab' } as never,
-  draggingReminder: { opacity: 0.45 },
-  dragTargetReminder: { outlineStyle: 'solid', outlineWidth: 2, outlineOffset: -2 } as never,
   dragHandle: { position: 'absolute', right: 9, top: 24, zIndex: 4, opacity: 0.65 },
   noteGrid: { gap: 10 },
   noteCard: { minHeight: 72, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 10 },
