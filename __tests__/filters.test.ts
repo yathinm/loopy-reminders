@@ -20,6 +20,11 @@ describe('smart list filters', () => {
     const dated = { ...base, id: 'dated', dueAt: new Date(2026, 8, 6).toISOString() };
     expect(sortReminders([base, dated]).map((item) => item.id)).toEqual(['dated', '1']);
   });
+  test('preserves a manually assigned reminder order', () => {
+    const first = { ...base, id: 'first', sortOrder: 2, dueAt: new Date(2026, 8, 6).toISOString() };
+    const second = { ...base, id: 'second', sortOrder: 1 };
+    expect(sortReminders([first, second]).map((item) => item.id)).toEqual(['second', 'first']);
+  });
   test('matches titles, notes, and tags without case sensitivity', () => {
     const reminder = { ...base, notes: 'Pick up groceries', tags: [{ id: 'tag', name: 'Errands' }] };
     expect(matchesReminderQuery(reminder, 'TASK')).toBe(true);

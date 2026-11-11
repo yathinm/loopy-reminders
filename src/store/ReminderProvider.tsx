@@ -22,6 +22,7 @@ type ReminderContextValue = {
   permanentlyDeleteReminder: (id: string) => Promise<void>;
   toggleReminder: (id: string, completed?: boolean) => Promise<void>;
   toggleFlag: (id: string) => Promise<void>;
+  reorderReminders: (orderedIds: string[]) => Promise<void>;
   createList: (name: string, color: string, symbol: string) => Promise<string>;
   updateList: (id: string, name: string, color: string, symbol: string) => Promise<void>;
   deleteList: (id: string) => Promise<void>;
@@ -191,6 +192,25 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     await refresh();
   }, [db, refresh]);
 
+  const reorderReminders = useCallback(async (orderedIds: string[]) => {
+    if (orderedIds.length < 2) return;
+    const reminderById = new Map(reminders.map((reminder) => [reminder.id, reminder]));
+    const existingOrders = orderedIds
+      .map((id) => reminderById.get(id)?.sortOrder)
+      .filter((value): value is number => value !== undefined)
+      .sort((a, b) => a - b);
+    if (existingOrders.length !== orderedIds.length) return;
+    const minimum = existingOrders[0]!;
+    const maximum = existingOrders.at(-1)!;
+    const step = maximum === minimum ? 1 : (maximum - minimum) / (orderedIds.length - 1);
+    await db.withTransactionAsync(async () => {
+      for (const [index, id] of orderedIds.entries()) {
+        await db.runAsync('UPDATE reminders SET sort_order=? WHERE id=?', minimum + step * index, id);
+      }
+    });
+    await refresh();
+  }, [db, refresh, reminders]);
+
   useEffect(() => {
     void configureNotifications().then(reconcileNotifications).catch(() => undefined);
     const subscription = addNotificationResponseListener((actionIdentifier, reminderId) => {
@@ -259,7 +279,7 @@ export function ReminderProvider({ children }: PropsWithChildren) {
     await refresh();
   }, [db, refresh]);
 
-  const value = useMemo(() => ({ reminders, deletedReminders, lists, notes, deletedNotes, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, saveNote, deleteNote, restoreNote, permanentlyDeleteNote }), [reminders, deletedReminders, lists, notes, deletedNotes, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, createList, updateList, deleteList, saveNote, deleteNote, restoreNote, permanentlyDeleteNote]);
+  const value = useMemo(() => ({ reminders, deletedReminders, lists, notes, deletedNotes, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, reorderReminders, createList, updateList, deleteList, saveNote, deleteNote, restoreNote, permanentlyDeleteNote }), [reminders, deletedReminders, lists, notes, deletedNotes, loading, error, saveReminder, deleteReminder, restoreReminder, permanentlyDeleteReminder, toggleReminder, toggleFlag, reorderReminders, createList, updateList, deleteList, saveNote, deleteNote, restoreNote, permanentlyDeleteNote]);
   return <ReminderContext.Provider value={value}>{children}</ReminderContext.Provider>;
 }
 

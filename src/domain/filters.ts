@@ -34,9 +34,10 @@ export function matchesReminderQuery(reminder: Reminder, query: string): boolean
 export function sortReminders(reminders: Reminder[]): Reminder[] {
   return [...reminders].sort((a, b) => {
     if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
     if (a.dueAt && b.dueAt) return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
     if (a.dueAt) return -1;
     if (b.dueAt) return 1;
-    return a.sortOrder - b.sortOrder || a.title.localeCompare(b.title);
+    return a.title.localeCompare(b.title);
   });
 }
